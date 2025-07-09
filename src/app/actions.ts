@@ -95,7 +95,8 @@ export async function searchInfluencers(
     }
 
     const result = await response.json();
-    const mappedData = mapYlyticToInfluencer(result.creators as YlyticInfluencer[]);
+    const creators = result.creators as YlyticInfluencer[] || [];
+    const mappedData = mapYlyticToInfluencer(creators);
     return { data: mappedData };
   } catch (error) {
     logger.error("Fetch Error while searching influencers", { error, params });
