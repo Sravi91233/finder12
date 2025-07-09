@@ -72,6 +72,7 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
   const onSubmit = (values: FormValues) => {
     const searchParams: SearchParams = {
       ...values,
+      category: values.category === "all" ? "" : values.category,
       followers_min: values.followers[0],
       followers_max: values.followers[1],
       engagement_rate_min: values.engagement[0],
@@ -157,7 +158,7 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
                     <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    <SelectItem value="">All Categories</SelectItem>
+                    <SelectItem value="all">All Categories</SelectItem>
                     {categories.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
                   </SelectContent>
                 </Select>
