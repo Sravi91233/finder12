@@ -77,6 +77,7 @@ export async function searchInfluencers(
   if (params.posts_max && params.posts_max > 0) query.append("posts_maximum", params.posts_max.toString());
 
   const url = `https://ylytic-influencers-api.p.rapidapi.com/ylytic/admin/api/v1/discovery?${query.toString()}`;
+  logger.debug(`Fetching from URL: ${url}`);
 
   try {
     const response = await fetch(url, {
