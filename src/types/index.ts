@@ -26,3 +26,16 @@ export interface SearchParams {
   posts_max?: number;
   bio_keyword?: string;
 }
+
+export interface YlyticInfluencer {
+    bio: string;
+    category: string | null;
+    city: string | null;
+    connector: 'instagram' | 'youtube';
+    country: string;
+    engagement: number;
+    followers: number;
+    handle: string;
+    handle_link: string;
+    posts: number;
+}

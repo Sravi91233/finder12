@@ -1,6 +1,6 @@
 "use server";
 
-import type { SearchParams, Influencer } from "@/types";
+import type { SearchParams, Influencer, YlyticInfluencer } from "@/types";
 import { suggestSearchTerms } from "@/ai/flows/suggest-search-terms";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 
@@ -11,6 +11,23 @@ const mockInfluencers: Influencer[] = [
     { id: '4', username: 'foodiefinds', full_name: 'Diana Evans', biography: 'Eating my way through the city. Restaurant reviews and recipes.', followers_count: 500000, posts_count: 2500, engagement_rate: 4.0, connector: 'instagram', location_country: 'USA', location_city: 'Los Angeles', profile_pic_url: 'https://placehold.co/150x150.png', category: 'Food' },
     { id: '5', username: 'travelholic', full_name: 'Frank Green', biography: 'Backpacking the globe and sharing my adventures. 50+ countries and counting.', followers_count: 2100000, posts_count: 950, engagement_rate: 2.8, connector: 'instagram', location_country: 'Australia', location_city: 'Sydney', profile_pic_url: 'https://placehold.co/150x150.png', category: 'Travel' },
 ];
+
+const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => {
+    return ylyticData.map(creator => ({
+        id: creator.handle,
+        username: creator.handle.startsWith('@') ? creator.handle.substring(1) : creator.handle,
+        full_name: creator.handle, // New API does not provide full_name
+        biography: creator.bio,
+        followers_count: creator.followers,
+        posts_count: creator.posts,
+        engagement_rate: creator.engagement,
+        connector: creator.connector,
+        location_country: creator.country,
+        location_city: creator.city || '',
+        profile_pic_url: `https://placehold.co/150x150.png`, // New API does not provide profile_pic_url
+        category: creator.category || 'N/A',
+    }));
+};
 
 export async function searchInfluencers(
   params: SearchParams
@@ -44,26 +61,28 @@ export async function searchInfluencers(
     return { data: filteredData };
   }
 
-  const query = new URLSearchParams();
+  const query = new URLSearchParams({ current_page: '1' });
   
-  if (params.bio_keyword) query.append("q", params.bio_keyword);
+  if (params.bio_keyword) query.append("bio_contains", params.bio_keyword);
   if (params.connector && params.connector !== 'all') query.append("connector", params.connector);
   if (params.category) query.append("category", params.category);
-  if (params.country) query.append("location_country", params.country);
-  if (params.city) query.append("location_city", params.city);
-  if (params.followers_min) query.append("followers_min", params.followers_min.toString());
-  if (params.followers_max) query.append("followers_max", params.followers_max.toString());
-  if (params.engagement_rate_min) query.append("engagement_rate_min", params.engagement_rate_min.toString());
-  if (params.engagement_rate_max) query.append("engagement_rate_max", params.engagement_rate_max.toString());
+  if (params.country) query.append("country", params.country);
+  if (params.city) query.append("city", params.city);
+  if (params.followers_min) query.append("followers_minimum", params.followers_min.toString());
+  if (params.followers_max) query.append("followers_maximum", params.followers_max.toString());
+  if (params.engagement_rate_min) query.append("engagement_rate_minumum", params.engagement_rate_min.toString());
+  if (params.engagement_rate_max) query.append("engagement_rate_maximum", params.engagement_rate_max.toString());
+  if (params.posts_min) query.append("posts_minimum", params.posts_min.toString());
+  if (params.posts_max) query.append("posts_maximum", params.posts_max.toString());
 
-  const url = `https://ylytic-influencer-discovery.p.rapidapi.com/search_v2?${query.toString()}`;
+  const url = `https://ylytic-influencers-api.p.rapidapi.com/ylytic/admin/api/v1/discovery?${query.toString()}`;
 
   try {
     const response = await fetch(url, {
       method: "GET",
       headers: {
         "X-RapidAPI-Key": apiKey,
-        "X-RapidAPI-Host": "ylytic-influencer-discovery.p.rapidapi.com",
+        "X-RapidAPI-Host": "ylytic-influencers-api.p.rapidapi.com",
       },
     });
 
@@ -74,7 +93,8 @@ export async function searchInfluencers(
     }
 
     const result = await response.json();
-    return { data: result.creators as Influencer[] };
+    const mappedData = mapYlyticToInfluencer(result.creators as YlyticInfluencer[]);
+    return { data: mappedData };
   } catch (error) {
     console.error("Fetch Error:", error);
     return { error: "Failed to connect to the API. Please check your network connection." };

@@ -44,7 +44,7 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-const categories = ["Fashion", "Beauty", "Gaming", "Tech", "Food", "Travel", "Fitness", "Lifestyle"];
+const categories = ["Fashion", "Beauty", "Gaming", "Tech", "Food", "Travel", "Fitness", "Lifestyle", "Books & Writing", "Health & Fitness", "Family & Relationships", "Art & Design"];
 
 interface InfluencerSearchFormProps {
   onSearch: (params: SearchParams) => void;
@@ -72,7 +72,7 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
   const onSubmit = (values: FormValues) => {
     const searchParams: SearchParams = {
       ...values,
-      category: values.category === "all" ? "" : values.category,
+      category: values.category === "all" ? undefined : values.category,
       followers_min: values.followers[0],
       followers_max: values.followers[1],
       engagement_rate_min: values.engagement[0],
