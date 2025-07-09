@@ -41,7 +41,7 @@ export async function searchInfluencers(
 
     const filteredData = mockInfluencers.filter(i => {
         if (params.connector && params.connector !== 'all' && i.connector !== params.connector) return false;
-        if (params.category && i.category.toLowerCase() !== params.category.toLowerCase()) return false;
+        if (params.category && params.category !== 'all' && i.category.toLowerCase() !== params.category.toLowerCase()) return false;
         if (params.country && !i.location_country.toLowerCase().includes(params.country.toLowerCase())) return false;
         if (params.city && !i.location_city.toLowerCase().includes(params.city.toLowerCase())) return false;
         if (params.followers_min && i.followers_count < params.followers_min) return false;
@@ -65,12 +65,12 @@ export async function searchInfluencers(
   
   if (params.bio_keyword) query.append("bio_contains", params.bio_keyword);
   if (params.connector && params.connector !== 'all') query.append("connector", params.connector);
-  if (params.category) query.append("category", params.category);
+  if (params.category && params.category !== 'all') query.append("category", params.category);
   if (params.country) query.append("country", params.country);
   if (params.city) query.append("city", params.city);
   if (params.followers_min) query.append("followers_minimum", params.followers_min.toString());
   if (params.followers_max) query.append("followers_maximum", params.followers_max.toString());
-  if (params.engagement_rate_min) query.append("engagement_rate_minumum", params.engagement_rate_min.toString());
+  if (params.engagement_rate_min) query.append("engagement_rate_minimum", params.engagement_rate_min.toString());
   if (params.engagement_rate_max) query.append("engagement_rate_maximum", params.engagement_rate_max.toString());
   if (params.posts_min) query.append("posts_minimum", params.posts_min.toString());
   if (params.posts_max) query.append("posts_maximum", params.posts_max.toString());
