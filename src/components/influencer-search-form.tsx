@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -40,6 +42,9 @@ const formSchema = z.object({
   engagement: z.array(z.number()).default([0, 100]),
   posts: z.array(z.number()).default([0, 5000]),
   bio_keyword: z.string().optional(),
+}).refine(data => !!data.bio_keyword || (!!data.category && data.category !== 'all'), {
+  message: "Please enter a keyword or select a category to start searching.",
+  path: ["bio_keyword"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -60,7 +65,7 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
     defaultValues: {
       city: "",
       country: "",
-      category: "",
+      category: "all",
       connector: "all",
       followers: [0, 10000000],
       engagement: [0, 100],
@@ -95,9 +100,9 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
 
   const applySuggestion = (type: 'keyword' | 'category', value: string) => {
     if (type === 'keyword') {
-      form.setValue('bio_keyword', value);
+      form.setValue('bio_keyword', value, { shouldValidate: true });
     } else {
-      form.setValue('category', value);
+      form.setValue('category', value, { shouldValidate: true });
     }
     setSuggestions(null);
   }
@@ -117,6 +122,10 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
                     <FormControl>
                       <Input placeholder="e.g. fashion blogger" {...field} />
                     </FormControl>
+                    <FormDescription>
+                      Or select a category below.
+                    </FormDescription>
+                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -153,7 +162,7 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
             <FormField control={form.control} name="category" render={({ field }) => (
               <FormItem>
                 <FormLabel>Category</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
+                <Select onValueChange={(value) => field.onChange(value)} value={field.value}>
                   <FormControl>
                     <SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger>
                   </FormControl>
@@ -211,8 +220,6 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
                 </div>
               </FormItem>
             )}/>
-
-            <FormMessage />
 
             <Button type="submit" className="w-full bg-accent hover:bg-accent/90" disabled={isLoading}>
               {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}

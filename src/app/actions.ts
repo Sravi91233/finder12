@@ -34,6 +34,11 @@ const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => 
 export async function searchInfluencers(
   params: SearchParams
 ): Promise<{ data?: Influencer[]; error?: string }> {
+  
+  if (!params.bio_keyword && (!params.category || params.category === 'all')) {
+    return { error: "Please provide a Bio/Handle Keyword or a Category to start your search." };
+  }
+  
   const apiKey = process.env.RAPIDAPI_KEY;
 
   if (!apiKey) {
