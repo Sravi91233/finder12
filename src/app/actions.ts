@@ -3,6 +3,7 @@
 import type { SearchParams, Influencer, YlyticInfluencer } from "@/types";
 import { suggestSearchTerms } from "@/ai/flows/suggest-search-terms";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
+import { logger } from "@/lib/logger";
 
 const mockInfluencers: Influencer[] = [
     { id: '1', username: 'stylemaven', full_name: 'Alex Doe', biography: 'Fashion lover & blogger. Exploring the world one outfit at a time. DM for collabs!', followers_count: 1500000, posts_count: 1200, engagement_rate: 2.5, connector: 'instagram', location_country: 'USA', location_city: 'New York', profile_pic_url: 'https://placehold.co/150x150.png', category: 'Fashion' },
@@ -16,7 +17,7 @@ const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => 
     return ylyticData.map(creator => ({
         id: creator.handle,
         username: creator.handle.startsWith('@') ? creator.handle.substring(1) : creator.handle,
-        full_name: creator.handle, // API does not provide full_name
+        full_name: creator.handle, 
         biography: creator.bio,
         followers_count: creator.followers,
         posts_count: creator.posts,
@@ -24,7 +25,7 @@ const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => 
         connector: creator.connector,
         location_country: creator.country,
         location_city: creator.city || 'N/A',
-        profile_pic_url: `https://placehold.co/150x150.png`, // API does not provide profile_pic_url
+        profile_pic_url: `https://placehold.co/150x150.png`, 
         category: creator.category || 'N/A',
     }));
 };
@@ -35,7 +36,7 @@ export async function searchInfluencers(
   const apiKey = process.env.RAPIDAPI_KEY;
 
   if (!apiKey) {
-    console.warn("RAPIDAPI_KEY is not set in .env.local. Using mock data. Create a .env.local file with your RapidAPI key to use the live API.");
+    logger.warn("RAPIDAPI_KEY is not set. Using mock data.");
     
     await new Promise(resolve => setTimeout(resolve, 1000));
 
@@ -88,7 +89,7 @@ export async function searchInfluencers(
 
     if (!response.ok) {
       const errorData = await response.json();
-      console.error("API Error:", errorData);
+      logger.error("API Error while searching influencers", { status: response.status, errorData, params });
       return { error: `API Error: ${errorData.message || 'Failed to fetch data'}` };
     }
 
@@ -96,7 +97,7 @@ export async function searchInfluencers(
     const mappedData = mapYlyticToInfluencer(result.creators as YlyticInfluencer[]);
     return { data: mappedData };
   } catch (error) {
-    console.error("Fetch Error:", error);
+    logger.error("Fetch Error while searching influencers", { error, params });
     return { error: "Failed to connect to the API. Please check your network connection." };
   }
 }
@@ -110,7 +111,7 @@ export async function getSuggestions(
   try {
     return await suggestSearchTerms({ searchTerm });
   } catch (error) {
-    console.error("AI Suggestion Error:", error);
+    logger.error("AI Suggestion Error", { error, searchTerm });
     return null;
   }
 }
