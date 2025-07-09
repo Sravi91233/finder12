@@ -16,15 +16,15 @@ const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => 
     return ylyticData.map(creator => ({
         id: creator.handle,
         username: creator.handle.startsWith('@') ? creator.handle.substring(1) : creator.handle,
-        full_name: creator.handle, // New API does not provide full_name
+        full_name: creator.handle, // API does not provide full_name
         biography: creator.bio,
         followers_count: creator.followers,
         posts_count: creator.posts,
         engagement_rate: creator.engagement,
         connector: creator.connector,
         location_country: creator.country,
-        location_city: creator.city || '',
-        profile_pic_url: `https://placehold.co/150x150.png`, // New API does not provide profile_pic_url
+        location_city: creator.city || 'N/A',
+        profile_pic_url: `https://placehold.co/150x150.png`, // API does not provide profile_pic_url
         category: creator.category || 'N/A',
     }));
 };
@@ -69,11 +69,11 @@ export async function searchInfluencers(
   if (params.country) query.append("country", params.country);
   if (params.city) query.append("city", params.city);
   if (params.followers_min) query.append("followers_minimum", params.followers_min.toString());
-  if (params.followers_max) query.append("followers_maximum", params.followers_max.toString());
+  if (params.followers_max && params.followers_max > 0) query.append("followers_maximum", params.followers_max.toString());
   if (params.engagement_rate_min) query.append("engagement_rate_minimum", params.engagement_rate_min.toString());
-  if (params.engagement_rate_max) query.append("engagement_rate_maximum", params.engagement_rate_max.toString());
+  if (params.engagement_rate_max && params.engagement_rate_max > 0) query.append("engagement_rate_maximum", params.engagement_rate_max.toString());
   if (params.posts_min) query.append("posts_minimum", params.posts_min.toString());
-  if (params.posts_max) query.append("posts_maximum", params.posts_max.toString());
+  if (params.posts_max && params.posts_max > 0) query.append("posts_maximum", params.posts_max.toString());
 
   const url = `https://ylytic-influencers-api.p.rapidapi.com/ylytic/admin/api/v1/discovery?${query.toString()}`;
 
