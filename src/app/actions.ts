@@ -6,14 +6,6 @@ import { suggestSearchTerms } from "@/ai/flows/suggest-search-terms";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 import { logger } from "@/lib/logger";
 
-const mockInfluencers: Influencer[] = [
-    { id: '1', username: 'stylemaven', full_name: 'Alex Doe', biography: 'Fashion lover & blogger. Exploring the world one outfit at a time. DM for collabs!', followers_count: 1500000, posts_count: 1200, engagement_rate: 2.5, connector: 'instagram', location_country: 'USA', location_city: 'New York', profile_pic_url: 'https://placehold.co/150x150.png', category: 'Fashion' },
-    { id: '2', username: 'gamergod', full_name: 'Ben Carter', biography: 'Pro gamer streaming daily. Come hang out!', followers_count: 3200000, posts_count: 500, engagement_rate: 5.1, connector: 'youtube', location_country: 'Canada', location_city: 'Toronto', profile_pic_url: 'https://placehold.co/150x150.png', category: 'Gaming' },
-    { id: '3', username: 'techtrends', full_name: 'Chloe Davis', biography: 'Unboxing the latest tech gadgets. Your daily dose of tech news and reviews.', followers_count: 850000, posts_count: 800, engagement_rate: 3.2, connector: 'youtube', location_country: 'UK', location_city: 'London', profile_pic_url: 'https://placehold.co/150x150.png', category: 'Tech' },
-    { id: '4', username: 'foodiefinds', full_name: 'Diana Evans', biography: 'Eating my way through the city. Restaurant reviews and recipes.', followers_count: 500000, posts_count: 2500, engagement_rate: 4.0, connector: 'instagram', location_country: 'USA', location_city: 'Los Angeles', profile_pic_url: 'https://placehold.co/150x150.png', category: 'Food' },
-    { id: '5', username: 'travelholic', full_name: 'Frank Green', biography: 'Backpacking the globe and sharing my adventures. 50+ countries and counting.', followers_count: 2100000, posts_count: 950, engagement_rate: 2.8, connector: 'instagram', location_country: 'Australia', location_city: 'Sydney', profile_pic_url: 'https://placehold.co/150x150.png', category: 'Travel' },
-];
-
 const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => {
     return ylyticData.map(creator => ({
         id: creator.handle,
@@ -42,30 +34,8 @@ export async function searchInfluencers(
   const apiKey = process.env.RAPIDAPI_KEY;
 
   if (!apiKey) {
-    logger.warn("RAPIDAPI_KEY is not set. Using mock data.");
-    
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    const filteredData = mockInfluencers.filter(i => {
-        if (params.connector && params.connector !== 'all' && i.connector !== params.connector) return false;
-        if (params.category && params.category !== 'all' && i.category.toLowerCase() !== params.category.toLowerCase()) return false;
-        if (params.country && !i.location_country.toLowerCase().includes(params.country.toLowerCase())) return false;
-        if (params.city && !i.location_city.toLowerCase().includes(params.city.toLowerCase())) return false;
-        if (params.followers_min && i.followers_count < params.followers_min) return false;
-        if (params.followers_max && i.followers_count > params.followers_max) return false;
-        if (params.engagement_rate_min && i.engagement_rate < params.engagement_rate_min) return false;
-        if (params.engagement_rate_max && i.engagement_rate < params.engagement_rate_max) return false;
-        if (params.posts_min && i.posts_count < params.posts_min) return false;
-        if (params.posts_max && i.posts_count > params.posts_max) return false;
-        if (params.bio_keyword) {
-            const keyword = params.bio_keyword.toLowerCase();
-            if (!i.biography.toLowerCase().includes(keyword) && !i.username.toLowerCase().includes(keyword) && !i.full_name.toLowerCase().includes(keyword)) {
-                return false;
-            }
-        }
-        return true;
-    });
-    return { data: filteredData };
+    logger.error("RAPIDAPI_KEY is not set. Please add it to your .env file.");
+    return { error: "API key is not configured. Please contact support." };
   }
 
   const query = new URLSearchParams({ current_page: '1' });
