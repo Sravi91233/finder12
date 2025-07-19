@@ -34,7 +34,7 @@ import type { SearchParams } from "@/types";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 
 const formSchema = z.object({
-  city: z.string().optional(),
+  city: z.string().min(1, { message: "City is required to start a search." }),
   country: z.string().optional(),
   category: z.string().optional(),
   connector: z.enum(["all", "instagram", "youtube"]).default("all"),
@@ -42,9 +42,6 @@ const formSchema = z.object({
   engagement: z.array(z.number()).default([0, 100]),
   posts: z.array(z.number()).default([0, 5000]),
   bio_keyword: z.string().optional(),
-}).refine(data => !!data.bio_keyword || (!!data.category && data.category !== 'all'), {
-  message: "Please enter a keyword or select a category to start searching.",
-  path: ["bio_keyword"],
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -112,6 +109,19 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
       <CardContent className="p-4">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            
+            <FormField control={form.control} name="country" render={({ field }) => (
+                <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="e.g. USA" {...field} /></FormControl></FormItem>
+            )}/>
+
+            <FormField control={form.control} name="city" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>City (Required)</FormLabel>
+                  <FormControl><Input placeholder="e.g. New York" {...field} /></FormControl>
+                  <FormMessage />
+                </FormItem>
+            )}/>
+
             <div className="relative">
               <FormField
                 control={form.control}
@@ -123,9 +133,8 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
                       <Input placeholder="e.g. fashion blogger" {...field} />
                     </FormControl>
                     <FormDescription>
-                      Or select a category below.
+                      Optional: Use AI to get suggestions.
                     </FormDescription>
-                    <FormMessage />
                   </FormItem>
                 )}
               />
@@ -172,14 +181,6 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
                   </SelectContent>
                 </Select>
               </FormItem>
-            )}/>
-            
-            <FormField control={form.control} name="country" render={({ field }) => (
-                <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="e.g. USA" {...field} /></FormControl></FormItem>
-            )}/>
-
-            <FormField control={form.control} name="city" render={({ field }) => (
-                <FormItem><FormLabel>City</FormLabel><FormControl><Input placeholder="e.g. New York" {...field} /></FormControl></FormItem>
             )}/>
 
             <FormField control={form.control} name="followers" render={({ field }) => (
