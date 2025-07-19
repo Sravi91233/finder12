@@ -109,7 +109,12 @@ export async function searchInfluencers(
     }
 
     const result = await response.json();
-    const creators = result.creators as YlyticInfluencer[] || [];
+    const creators = result.creators as YlyticInfluencer[] | null;
+    
+    if (creators === null) {
+      return { data: [] };
+    }
+    
     const mappedData = mapYlyticToInfluencer(creators);
     return { data: mappedData };
   } catch (error) {
