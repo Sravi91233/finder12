@@ -49,7 +49,9 @@ export default function LoginPage() {
     setError(null);
     try {
       await signIn(values.email, values.password);
-      router.push('/influencer-finder');
+      // Use a full page refresh to ensure the session cookie is set before navigating.
+      // This is the most reliable way to avoid race conditions.
+      window.location.href = '/influencer-finder';
     } catch (err: any) {
       let errorMessage = "An unexpected error occurred. Please try again.";
       // Firebase auth errors have a 'code' property
@@ -69,8 +71,7 @@ export default function LoginPage() {
         }
       }
       setError(errorMessage);
-    } finally {
-        setIsLoading(false);
+       setIsLoading(false);
     }
   };
 

@@ -7,7 +7,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -45,7 +45,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
@@ -61,34 +60,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userData);
           await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
         } else {
+          // This case handles if a user exists in Firebase Auth but not Firestore.
           setUser(null); 
           await firebaseSignOut(auth);
         }
       } else {
         setFirebaseUser(null);
         setUser(null);
-        // Redirect to login if user logs out while on a protected route
-        const protectedRoutes = ['/influencer-finder', '/dashboard'];
-        const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-        if (isProtectedRoute) {
-            router.push('/login');
-        }
+        // Let middleware handle redirects, but clear the client-side state.
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, [pathname, router]);
+  }, [pathname]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    // Await the server-side session creation before allowing the client to proceed.
     await fetchSessionCookie(userCredential.user);
   }, []);
 
   const signOut = useCallback(async () => {
     await firebaseSignOut(auth);
     await clearSessionCookie();
-    // The onAuthStateChanged listener will handle redirecting to /login
+    // Use full page reload to ensure state is cleared everywhere.
+    window.location.href = '/login';
   }, []);
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };
