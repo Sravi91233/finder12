@@ -8,11 +8,21 @@ export default function LandingPage() {
   return (
     <div className="flex flex-col min-h-screen">
       <header className="p-4 md:p-6 border-b bg-card">
-        <div className="container mx-auto flex items-center gap-4">
-          <Icons.logo className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold text-primary font-headline">
-            InfluenceFinder
-          </h1>
+        <div className="container mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <Icons.logo className="h-8 w-8 text-primary" />
+                <h1 className="text-2xl font-bold text-primary font-headline">
+                    InfluenceFinder
+                </h1>
+            </div>
+            <div className="flex items-center gap-2">
+                 <Button asChild variant="ghost">
+                    <Link href="/login">Login</Link>
+                </Button>
+                 <Button asChild>
+                    <Link href="/signup">Sign Up</Link>
+                </Button>
+            </div>
         </div>
       </header>
       <main className="flex-1">
