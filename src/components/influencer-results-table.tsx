@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo } from "react";
@@ -23,7 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronsUpDown, Download, AlertCircle, ArrowUp, ArrowDown } from "lucide-react";
+import { ChevronsUpDown, Download, AlertCircle, ArrowUp, ArrowDown, DatabaseZap, SearchCheck } from "lucide-react";
 import { exportToCSV, formatNumber } from "@/lib/utils";
 import Link from 'next/link';
 
@@ -33,13 +34,14 @@ interface InfluencerResultsTableProps {
   influencers: Influencer[];
   isLoading: boolean;
   error: string | null;
+  isLiveSearch: boolean;
 }
 
 const getProfileUrl = (connector: 'instagram' | 'youtube', username: string) => {
     return connector === 'instagram' ? `https://instagram.com/${username}` : `https://youtube.com/@${username}`;
 }
 
-export function InfluencerResultsTable({ influencers, isLoading, error }: InfluencerResultsTableProps) {
+export function InfluencerResultsTable({ influencers, isLoading, error, isLiveSearch }: InfluencerResultsTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'followers_count', direction: 'descending' });
 
   const sortedInfluencers = useMemo(() => {
@@ -72,6 +74,15 @@ export function InfluencerResultsTable({ influencers, isLoading, error }: Influe
     }
     return sortConfig.direction === 'ascending' ? <ArrowUp className="ml-2 h-4 w-4" /> : <ArrowDown className="ml-2 h-4 w-4" />;
   }
+  
+  const renderEmptyState = () => {
+    return (
+        <div className="text-center py-16">
+            <h3 className="text-xl font-semibold">No influencers found</h3>
+            <p className="text-muted-foreground mt-2">Try adjusting your search filters or select a different city.</p>
+        </div>
+    )
+  }
 
   const renderContent = () => {
     if (isLoading) {
@@ -101,12 +112,7 @@ export function InfluencerResultsTable({ influencers, isLoading, error }: Influe
     }
     
     if (influencers.length === 0) {
-      return (
-          <div className="text-center py-16">
-              <h3 className="text-xl font-semibold">No results found</h3>
-              <p className="text-muted-foreground mt-2">Try adjusting your search filters.</p>
-          </div>
-      )
+      return renderEmptyState();
     }
 
     return (
@@ -168,6 +174,22 @@ export function InfluencerResultsTable({ influencers, isLoading, error }: Influe
       </Table>
     );
   };
+  
+  const getCardDescription = () => {
+    if (isLoading) return "Searching...";
+    if (error) return "An error occurred.";
+    if (influencers.length > 0) {
+      const resultText = isLiveSearch 
+        ? `${influencers.length} influencers found and saved.` 
+        : `Showing ${influencers.length} cached influencers.`;
+      const icon = isLiveSearch
+        ? <SearchCheck className="h-4 w-4 text-green-500" />
+        : <DatabaseZap className="h-4 w-4 text-blue-500" />;
+      return <div className="flex items-center gap-2">{icon} {resultText}</div>;
+    }
+    return 'Enter your criteria to find influencers.';
+  }
+
 
   return (
     <Card>
@@ -176,7 +198,7 @@ export function InfluencerResultsTable({ influencers, isLoading, error }: Influe
             <div>
                 <CardTitle>Search Results</CardTitle>
                 <CardDescription>
-                  {influencers.length > 0 ? `${influencers.length} influencers found.` : 'Enter your criteria to find influencers.'}
+                  {getCardDescription()}
                 </CardDescription>
             </div>
           <Button variant="outline" size="sm" onClick={() => exportToCSV(influencers, "influencer_results.csv")} disabled={influencers.length === 0 || isLoading}>
