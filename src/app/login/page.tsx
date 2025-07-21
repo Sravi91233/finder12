@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -21,6 +22,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { logger } from '@/lib/logger';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -33,6 +35,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signIn } = useAuth();
+  const router = useRouter();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -45,20 +48,18 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     setError(null);
-    console.log("LOGIN PAGE: Submitting form...");
+    logger.debug("LOGIN PAGE: Submitting form...");
     try {
-      console.log("LOGIN PAGE: Calling signIn from AuthContext...");
+      logger.debug("LOGIN PAGE: Calling signIn from AuthContext...");
       const user = await signIn(values.email, values.password);
-      console.log("LOGIN PAGE: signIn call successful. User data received:", user);
+      logger.debug("LOGIN PAGE: signIn call successful. User data received:", user);
 
       if (user) {
-        console.log("LOGIN PAGE: User exists. Redirecting with full page refresh to /influencer-finder...");
-        // Use a full page refresh to ensure the session cookie is set before navigating.
-        // This is the most reliable way to avoid race conditions.
-        window.location.href = '/influencer-finder';
+        logger.debug("LOGIN PAGE: User exists. Navigating with router.push to /influencer-finder...");
+        router.push('/influencer-finder');
       } else {
         const loginError = 'Login was not successful. Please try again.';
-        console.error("LOGIN PAGE: " + loginError);
+        logger.error("LOGIN PAGE: " + loginError);
         setError(loginError);
         setIsLoading(false);
       }
@@ -83,7 +84,7 @@ export default function LoginPage() {
         // Handle custom errors from our API
         errorMessage = err.message;
       }
-      console.error("LOGIN PAGE: Error during login process:", errorMessage, err);
+      logger.error("LOGIN PAGE: Error during login process:", { message: errorMessage, originalError: err });
       setError(errorMessage);
       setIsLoading(false);
     }

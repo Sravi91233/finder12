@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import type { User } from '@/types';
+import { logger } from '@/lib/logger';
 
 interface AuthContextType {
   user: User | null;
@@ -23,26 +24,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-        setIsLoading(true);
+        logger.debug("AUTH CONTEXT: onAuthStateChanged triggered.", { hasUser: !!fbUser });
+        setFirebaseUser(fbUser);
         if (fbUser) {
-            setFirebaseUser(fbUser);
-            // This is just to update the firebase user state.
-            // The full user profile is loaded by the signIn function or the ProtectedRoutes component.
+            // User is signed in according to Firebase client SDK.
+            // Let's verify the session with our backend and get the full user profile.
+            // This ensures client and server state are in sync.
+            try {
+                const response = await fetch('/api/auth/session', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                });
+                if (response.ok) {
+                    const userData: User = await response.json();
+                    logger.debug("AUTH CONTEXT: Session verified on load, user set.", { email: userData.email });
+                    setUser(userData);
+                } else {
+                    // Session is invalid or expired on the server.
+                    logger.warn("AUTH CONTEXT: onAuthStateChanged user exists, but server session is invalid. Signing out.");
+                    setUser(null);
+                    await firebaseSignOut(auth); // Clean up client state
+                }
+            } catch (error) {
+                logger.error("AUTH CONTEXT: Error verifying session on load.", error);
+                setUser(null);
+            }
         } else {
-            setFirebaseUser(null);
+            // User is signed out.
             setUser(null);
         }
         setIsLoading(false);
     });
+
     return () => unsubscribe();
   }, []);
 
-  const signIn = useCallback(async (email: string, password: string): Promise<User | null> => {
-    console.log("AUTH CONTEXT: Attempting to sign in with email and password...");
+  const signIn = useCallback(async (email: string, password:string): Promise<User | null> => {
+    logger.debug("AUTH CONTEXT: Attempting to sign in with email and password...");
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const idToken = await userCredential.user.getIdToken(true);
     
-    console.log("AUTH CONTEXT: ID Token obtained. Posting to /api/auth/session...");
+    logger.debug("AUTH CONTEXT: ID Token obtained. Posting to /api/auth/session...");
     const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -50,26 +72,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (!response.ok) {
-        console.error("AUTH CONTEXT: Session creation failed!", await response.text());
+        logger.error("AUTH CONTEXT: Session creation failed!", await response.text());
         throw new Error('Failed to create session.');
     }
 
     const userData: User = await response.json();
-    console.log("AUTH CONTEXT: Session created successfully. User data received:", userData);
+    logger.debug("AUTH CONTEXT: Session created successfully. User data received:", userData);
     setUser(userData);
     return userData;
   }, []);
 
   const signOut = useCallback(async () => {
-    console.log("AUTH CONTEXT: Signing out...");
+    logger.debug("AUTH CONTEXT: Signing out...");
     try {
-        await firebaseSignOut(auth);
+        // 1. Tell the server to delete the session cookie
         await fetch('/api/auth/session', { method: 'DELETE' });
+        // 2. Sign out from Firebase on the client
+        await firebaseSignOut(auth);
     } catch (error) {
-        console.error('AUTH CONTEXT: Failed to sign out:', error);
+        logger.error('AUTH CONTEXT: Failed to sign out:', error);
     } finally {
+      // 3. Clear local state
       setUser(null);
-      console.log("AUTH CONTEXT: Client user state cleared.");
+      setFirebaseUser(null);
+      logger.debug("AUTH CONTEXT: Client user state cleared.");
     }
   }, []);
 
