@@ -36,13 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const userData = await res.json();
             setUser(userData);
           } else {
+            // This can happen if the cookie isn't set yet or is invalid.
+            // The sign-in flow will handle fetching the user.
             setUser(null);
-            await firebaseSignOut(auth);
           }
         } catch (e) {
-            console.error("Failed to fetch user data", e);
+            console.error("Failed to fetch user data on load", e);
             setUser(null);
-            await firebaseSignOut(auth);
         }
       } else {
         setFirebaseUser(null);
@@ -59,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const idToken = await userCredential.user.getIdToken(true);
     
+    // Create the server-side session
     const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,6 +71,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         console.error("Session cookie creation failed:", errorData);
         throw new Error(errorData.error || 'Failed to set session cookie');
     }
+
+    // Now that the session is created, fetch user data to update context
+    try {
+        const res = await fetch('/api/user');
+        if (res.ok) {
+            const userData = await res.json();
+            setUser(userData);
+        } else {
+            throw new Error('Could not fetch user data after sign in');
+        }
+    } catch (e) {
+        console.error("Failed to fetch user data after sign in", e);
+        // Sign out to clean up state if user data fetch fails
+        await firebaseSignOut(auth);
+        throw e;
+    }
+
   }, []);
 
   const signOut = useCallback(async () => {
