@@ -22,32 +22,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // This effect's only job is to synchronize the Firebase Auth state with our app's state.
-  // When the user first visits or refreshes, this will check if they are logged in.
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
         setIsLoading(true);
-        if (fbUser) {
-            setFirebaseUser(fbUser);
-            // We now fetch the user profile from our own API to ensure it's in sync with the server session
-             try {
-                const res = await fetch('/api/auth/session');
-                if (res.ok) {
-                    const userData = await res.json();
-                    setUser(userData);
-                } else {
-                     // If the server session doesn't exist, log out the client
-                    await firebaseSignOut(auth);
-                    setUser(null);
-                }
-            } catch (e) {
-                console.error("AUTH CONTEXT: Error fetching user data on initial load", e);
-                setUser(null);
-            }
-        } else {
-            setFirebaseUser(null);
-            setUser(null);
-        }
+        setFirebaseUser(fbUser);
+        // We will rely on the session cookie and middleware to handle auth state.
+        // For the client, we just need to know if a Firebase user exists.
+        // The actual user profile will be fetched on pages/server actions as needed.
         setIsLoading(false);
     });
     return () => unsubscribe();
@@ -55,10 +36,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 
   const signIn = useCallback(async (email: string, password: string): Promise<User | null> => {
+    console.log("AUTH CONTEXT: Attempting to sign in with email and password...");
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const idToken = await userCredential.user.getIdToken(true);
     
-    // The server will create the session and return the full user profile
+    console.log("AUTH CONTEXT: ID Token obtained. Posting to /api/auth/session...");
     const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,31 +48,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     if (!response.ok) {
-        const errorData = await response.json();
-        console.error("AUTH CONTEXT: Session creation failed:", errorData);
-        throw new Error(errorData.error || 'Failed to sign in');
+        console.error("AUTH CONTEXT: Session creation failed!", await response.text());
+        throw new Error('Failed to create session.');
     }
 
     const userData: User = await response.json();
-    setUser(userData); // Update client-side state immediately
+    console.log("AUTH CONTEXT: Session created successfully. User data received:", userData);
+    setUser(userData);
     return userData;
   }, []);
 
   const signOut = useCallback(async () => {
+    console.log("AUTH CONTEXT: Signing out...");
     try {
         await firebaseSignOut(auth);
         await fetch('/api/auth/session', { method: 'DELETE' });
     } catch (error) {
-        console.error('Failed to sign out:', error);
+        console.error('AUTH CONTEXT: Failed to sign out:', error);
     } finally {
-      // A full reload on signout is the most reliable way to clear all state.
+      console.log("AUTH CONTEXT: Redirecting to /login after sign out.");
       window.location.href = '/login';
     }
   }, []);
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };
 
-  // While the initial auth state is loading, show a full-screen loader.
   if (isLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
