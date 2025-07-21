@@ -32,6 +32,11 @@ export async function searchInfluencers(
   params: SearchParams
 ): Promise<{ data?: Influencer[]; error?: string }> {
   
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return { error: "Authentication required to search." };
+  }
+
   if (!params.city) {
     return { error: "Please provide a City to start your search." };
   }
@@ -102,6 +107,10 @@ export async function searchInfluencers(
 export async function getSuggestions(
   searchTerm: string
 ): Promise<SuggestSearchTermsOutput | null> {
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    return null;
+  }
   if (!searchTerm.trim()) {
     return null;
   }

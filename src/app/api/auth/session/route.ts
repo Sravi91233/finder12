@@ -2,6 +2,7 @@
 import {NextRequest, NextResponse} from 'next/server';
 import { adminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
+import { logger } from '@/lib/logger';
 
 // This endpoint creates a session cookie when a user logs in.
 export async function POST(request: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     return response;
 
   } catch (error: any) {
-    console.error('Session cookie creation error:', error);
+    logger.error('Session cookie creation error:', { message: error.message, code: error.code });
     return NextResponse.json(
       { status: 'error', message: 'Failed to create session cookie.', error: error.message }, 
       { status: 500 }

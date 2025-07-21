@@ -7,7 +7,6 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
-import { usePathname } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
