@@ -24,14 +24,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-        logger.debug("AUTH CONTEXT: onAuthStateChanged triggered.", { hasUser: !!fbUser });
         setFirebaseUser(fbUser);
         if (fbUser) {
             try {
                 const response = await fetch('/api/auth/session');
                 if (response.ok) {
                     const userData: User = await response.json();
-                    logger.debug("AUTH CONTEXT: Session verified on load, user set.", { email: userData.email });
                     setUser(userData);
                 } else {
                     logger.warn("AUTH CONTEXT: onAuthStateChanged user exists, but server session is invalid. Signing out.");
@@ -52,11 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = useCallback(async (email: string, password:string): Promise<User | null> => {
-    logger.debug("AUTH CONTEXT: Attempting to sign in with email and password...");
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const idToken = await userCredential.user.getIdToken(true);
     
-    logger.debug("AUTH CONTEXT: ID Token obtained. Posting to /api/auth/session...");
     const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -69,14 +65,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const userData: User = await response.json();
-    logger.debug("AUTH CONTEXT: Session created successfully. User data received:", userData);
     setUser(userData);
-    setIsLoading(false); // Explicitly set loading to false after sign-in
+    setIsLoading(false); 
     return userData;
   }, []);
 
   const signOut = useCallback(async () => {
-    logger.debug("AUTH CONTEXT: Signing out...");
     try {
         await fetch('/api/auth/session', { method: 'DELETE' });
         await firebaseSignOut(auth);
@@ -86,7 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(null);
       setFirebaseUser(null);
       setIsLoading(false);
-      logger.debug("AUTH CONTEXT: Client user state cleared.");
     }
   }, []);
 

@@ -48,14 +48,10 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     setError(null);
-    logger.debug("LOGIN PAGE: Submitting form...");
     try {
-      logger.debug("LOGIN PAGE: Calling signIn from AuthContext...");
       const user = await signIn(values.email, values.password);
-      logger.debug("LOGIN PAGE: signIn call successful. User data received:", user);
 
       if (user) {
-        logger.debug("LOGIN PAGE: User exists. Navigating to /influencer-finder...");
         router.push('/influencer-finder');
       } else {
         const loginError = 'Login was not successful. Please try again.';
