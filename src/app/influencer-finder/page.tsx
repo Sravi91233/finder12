@@ -6,7 +6,7 @@ import type { Influencer, SearchParams, City } from "@/types";
 import { InfluencerSearchForm } from "@/components/influencer-search-form";
 import { InfluencerResultsTable } from "@/components/influencer-results-table";
 import { Icons } from "@/components/icons";
-import { searchInfluencers, getInfluencersByCity, getAllCities } from "@/app/actions";
+import { searchInfluencers, getInfluencersByCity, getCities } from "@/app/actions";
 import { Separator } from "@/components/ui/separator";
 
 export default function InfluenceFinderPage() {
@@ -18,7 +18,7 @@ export default function InfluenceFinderPage() {
 
   useState(() => {
     async function fetchCities() {
-      const cityList = await getAllCities();
+      const cityList = await getCities();
       setCities(cityList);
     }
     fetchCities();
@@ -31,7 +31,7 @@ export default function InfluenceFinderPage() {
       return;
     }
     setIsLoading(true);
-    setIsLiveSearch(false);
+    setIsLiveSearch(false); // This is a cached search
     setError(null);
     try {
       const data = await getInfluencersByCity(city);
@@ -46,7 +46,7 @@ export default function InfluenceFinderPage() {
 
   const handleLiveSearch = useCallback(async (params: SearchParams) => {
     setIsLoading(true);
-    setIsLiveSearch(true);
+    setIsLiveSearch(true); // This is a live search
     setError(null);
     try {
       const response = await searchInfluencers(params);
@@ -56,7 +56,7 @@ export default function InfluenceFinderPage() {
       } else {
         setResults(response.data || []);
         // Refresh city list after new search
-        const cityList = await getAllCities();
+        const cityList = await getCities();
         setCities(cityList);
       }
     } catch (err) {

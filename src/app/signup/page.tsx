@@ -21,6 +21,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { signUpUser } from '@/app/actions';
+import { useToast } from '@/hooks/use-toast';
 
 const signupSchema = z.object({
   name: z.string().min(1, { message: 'Name is required.' }),
@@ -38,6 +40,7 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { toast } = useToast();
 
   const form = useForm<SignupFormValues>({
     resolver: zodResolver(signupSchema),
@@ -52,11 +55,19 @@ export default function SignupPage() {
   const onSubmit = async (values: SignupFormValues) => {
     setIsLoading(true);
     setError(null);
-    // Signup logic will be added here in a future step
-    console.log(values);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setError("Signup functionality is not yet implemented.");
+    
+    const result = await signUpUser({ name: values.name, email: values.email, password: values.password });
+
+    if (result.success) {
+      toast({
+        title: "Account Created!",
+        description: "You have successfully signed up. Please log in.",
+      });
+      router.push('/login');
+    } else {
+      setError(result.error || "An unexpected error occurred.");
+    }
+
     setIsLoading(false);
   };
 

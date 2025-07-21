@@ -1,12 +1,17 @@
 
 "use server";
 
-import type { SearchParams, Influencer, YlyticInfluencer } from "@/types";
+import type { SearchParams, Influencer, YlyticInfluencer, City, SignUpCredentials } from "@/types";
 import { suggestSearchTerms } from "@/ai/flows/suggest-search-terms";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 import { logger } from "@/lib/logger";
+import { getAllCities, getInfluencersByCity as dbGetInfluencersByCity, saveInfluencers } from '@/lib/cityService';
+import { auth, db } from "@/lib/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 
-const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => {
+
+const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Omit<Influencer, 'city_id'>[] => {
     return ylyticData.map(creator => ({
         id: creator.handle,
         username: creator.handle.startsWith('@') ? creator.handle.substring(1) : creator.handle,
@@ -81,12 +86,16 @@ export async function searchInfluencers(
     const result = await response.json();
     const creators = result.creators as YlyticInfluencer[] | null;
     
-    if (creators === null) {
+    if (creators === null || creators.length === 0) {
       return { data: [] };
     }
     
     const mappedData = mapYlyticToInfluencer(creators);
-    return { data: mappedData };
+    await saveInfluencers(params.city, mappedData);
+    
+    const finalData = await dbGetInfluencersByCity(params.city);
+    return { data: finalData };
+
   } catch (error) {
     logger.error("Fetch Error while searching influencers", { error, params });
     return { error: "Failed to connect to the API. Please check your network connection." };
@@ -104,5 +113,62 @@ export async function getSuggestions(
   } catch (error) {
     logger.error("AI Suggestion Error", { error, searchTerm });
     return null;
+  }
+}
+
+
+export async function getInfluencersByCity(city: string): Promise<Influencer[]> {
+  try {
+    return await dbGetInfluencersByCity(city);
+  } catch(e) {
+    logger.error("Error fetching influencers by city from DB", e);
+    return [];
+  }
+}
+
+export async function getCities(): Promise<City[]> {
+    try {
+        return await getAllCities();
+    } catch(e) {
+        logger.error("Error fetching cities from DB", e);
+        return [];
+    }
+}
+
+export async function signUpUser(credentials: SignUpCredentials): Promise<{ success: boolean; error?: string }> {
+  const { name, email, password } = credentials;
+  
+  // This is a workaround for the client-side Firebase SDK usage in Server Actions
+  // In a real production app, you'd use the Firebase Admin SDK here.
+  const clientAuth = auth;
+
+  try {
+    const userCredential = await createUserWithEmailAndPassword(clientAuth, email, password);
+    const user = userCredential.user;
+
+    // Now create a document in Firestore
+    await setDoc(doc(db, "users", user.uid), {
+      id: user.uid,
+      name: name,
+      email: email,
+      role: "user",
+      createdAt: serverTimestamp(),
+      lastLogin: serverTimestamp(),
+      // We do NOT store the password in Firestore. It is handled securely by Firebase Auth.
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    logger.error("SIGNUP ERROR", { code: error.code, message: error.message });
+    // Provide a user-friendly error message
+    let errorMessage = "An unknown error occurred during signup.";
+    if (error.code === "auth/email-already-in-use") {
+      errorMessage = "This email address is already in use by another account.";
+    } else if (error.code === "auth/weak-password") {
+      errorMessage = "The password is too weak. Please use at least 6 characters.";
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = "The email address is not valid."
+    }
+    return { success: false, error: errorMessage };
   }
 }
