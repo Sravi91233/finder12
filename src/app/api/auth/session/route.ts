@@ -1,7 +1,6 @@
 
 import {NextRequest, NextResponse} from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
-import { cookies } from 'next/headers';
 import { logger } from '@/lib/logger';
 import type { User } from '@/types';
 
@@ -27,7 +26,9 @@ export async function POST(request: NextRequest) {
     
     const user = userDoc.data() as User;
 
-    cookies().set('session', sessionCookie, {
+    const response = NextResponse.json(user);
+
+    response.cookies.set('session', sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -35,7 +36,7 @@ export async function POST(request: NextRequest) {
       sameSite: 'lax',
     });
 
-    return NextResponse.json(user);
+    return response;
 
   } catch (error: any) {
     logger.error('Session cookie creation error:', { message: error.message, code: error.code });
@@ -48,12 +49,13 @@ export async function POST(request: NextRequest) {
 
 // This endpoint clears the session cookie when a user logs out.
 export async function DELETE() {
-  cookies().set('session', '', {
+  const response = NextResponse.json({status: 'success'});
+  response.cookies.set('session', '', {
     maxAge: 0,
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     path: '/',
     sameSite: 'lax',
   });
-  return NextResponse.json({status: 'success'});
+  return response;
 }
