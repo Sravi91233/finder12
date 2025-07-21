@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -33,6 +34,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { signIn } = useAuth();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -45,12 +47,30 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     setError(null);
-    // Login logic will be added here in the next step
-    console.log(values);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setError("Login functionality is not yet implemented.");
-    setIsLoading(false);
+    try {
+      await signIn(values.email, values.password);
+      router.push('/influencer-finder');
+    } catch (err: any) {
+      let errorMessage = "An unexpected error occurred. Please try again.";
+      // Firebase auth errors have a 'code' property
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+          case 'auth/wrong-password':
+          case 'auth/invalid-credential':
+             errorMessage = 'Invalid email or password. Please try again.';
+             break;
+          case 'auth/invalid-email':
+            errorMessage = 'Please enter a valid email address.';
+            break;
+          default:
+            errorMessage = 'An error occurred during login. Please try again later.';
+            break;
+        }
+      }
+      setError(errorMessage);
+      setIsLoading(false);
+    }
   };
 
   return (

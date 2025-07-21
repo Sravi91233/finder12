@@ -2,8 +2,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
@@ -12,6 +12,7 @@ interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   isLoading: boolean;
+  signIn: (email: string, password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,7 +30,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userDocRef = doc(db, 'users', fbUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-          setUser(userDoc.data() as User);
+          const userData = userDoc.data() as User;
+          setUser(userData);
+          // Update last login timestamp
+          await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
         } else {
           // This case might happen if user exists in Auth but not Firestore
           setUser(null); 
@@ -43,7 +47,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  const value = { firebaseUser, user, isLoading };
+  const signIn = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(auth, email, password);
+    // onAuthStateChanged will handle the rest
+  };
+
+  const value = { firebaseUser, user, isLoading, signIn };
 
   if (isLoading) {
     return (
