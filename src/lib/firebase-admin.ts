@@ -7,16 +7,27 @@ const getFirebaseAdmin = () => {
     return admin;
   }
 
-  const serviceAccount = {
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    // The private key must have newlines correctly formatted.
-    privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
-  };
+  // Ensure all required environment variables are present.
+  const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
-  if (!serviceAccount.projectId || !serviceAccount.clientEmail || !serviceAccount.privateKey) {
+  if (!projectId || !clientEmail || !privateKey) {
     throw new Error('Missing Firebase Admin SDK credentials. Check your environment variables.');
   }
+
+  // Handle the private key formatting for different environments.
+  // Vercel and other modern hosting platforms handle multi-line env vars correctly,
+  // so the key might already contain newlines. Local .env files often escape them.
+  if (!privateKey.includes('\n')) {
+    privateKey = privateKey.replace(/\\n/g, '\n');
+  }
+
+  const serviceAccount = {
+    projectId,
+    clientEmail,
+    privateKey,
+  };
 
   try {
     admin.initializeApp({
@@ -25,14 +36,12 @@ const getFirebaseAdmin = () => {
     console.log('Firebase Admin SDK initialized successfully.');
   } catch (error: any) {
     console.error('Firebase admin initialization error:', error.message);
-    // Throw the error to prevent the app from continuing with a misconfigured SDK.
     throw new Error(`Firebase admin initialization error: ${error.message}`);
   }
 
   return admin;
 };
 
-// Export instances from the initialized admin app.
-// The SDK will be initialized on the first call to any of these.
+// Export instances that will be initialized on their first use.
 export const adminAuth = getFirebaseAdmin().auth();
 export const adminDb = getFirebaseAdmin().firestore();
