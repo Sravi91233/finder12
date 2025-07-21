@@ -34,7 +34,6 @@ export default function AdminDashboardPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     const refreshData = async () => {
-        if (user?.role !== 'admin') return;
         setIsLoading(true);
         try {
             const [userList, cityList] = await Promise.all([
@@ -188,7 +187,7 @@ export default function AdminDashboardPage() {
                                 ) : cities.map(city => (
                                     <TableRow key={city.id}>
                                         <TableCell>{city.name}</TableCell>
-                                        <TableCell>{city.createdAt ? new Date(city.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</TableCell>
+                                        <TableCell>{city.createdAt?.seconds ? new Date(city.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="destructive" size="sm" onClick={() => handleDeleteCity(city.id, city.name)}>Delete</Button>
                                         </TableCell>
