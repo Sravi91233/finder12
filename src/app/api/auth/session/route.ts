@@ -1,6 +1,7 @@
 
 import {NextRequest, NextResponse} from 'next/server';
-import {adminAuth} from '@/lib/firebase-admin';
+import { adminAuth } from '@/lib/firebase-admin';
+import { cookies } from 'next/headers';
 
 // This endpoint creates a session cookie when a user logs in.
 export async function POST(request: NextRequest) {

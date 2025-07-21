@@ -6,19 +6,27 @@ import { config } from 'dotenv';
 
 config();
 
+// This is the correct way to initialize the Firebase Admin SDK.
+// It ensures that it's only initialized once and that the private key
+// is parsed correctly.
 if (!admin.apps.length) {
   try {
+    const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+    
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
+        throw new Error("Missing Firebase Admin credentials. Please check your .env file.");
+    }
+
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        // Replace literal \\n with actual newlines for Vercel/similar envs
-        privateKey: (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+        privateKey: privateKey,
       }),
     });
     console.log('Firebase Admin SDK initialized successfully.');
   } catch (error: any) {
-    console.error('Firebase admin initialization error:', error.stack);
+    console.error('Firebase admin initialization error:', error.message);
   }
 }
 
@@ -47,8 +55,7 @@ export async function getAuthenticatedUser(): Promise<User | null> {
 
         return userDoc.data() as User;
     } catch (error) {
-        // This is expected if the cookie is invalid.
-        // console.error("Error verifying session cookie:", error);
+        // This is expected if the cookie is invalid or expired.
         return null;
     }
 }
