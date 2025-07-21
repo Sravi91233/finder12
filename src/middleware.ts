@@ -12,7 +12,6 @@ export default async function middleware(req: NextRequest) {
   const isProtectedRoute = protectedRoutes.some(route =>
     path.startsWith(route)
   );
-  const isPublicRoute = publicRoutes.some(route => path.startsWith(route));
 
   // Get the session cookie
   const session = req.cookies.get('session');

@@ -61,12 +61,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFirebaseUser(fbUser);
         const userDocRef = doc(db, 'users', fbUser.uid);
         const userDoc = await getDoc(userDocRef);
+
         if (userDoc.exists()) {
           const userData = userDoc.data() as User;
           setUser(userData);
           await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-          await fetchSessionCookie(fbUser); // Set session cookie on login
+          await fetchSessionCookie(fbUser);
+          
+          // Redirect after successful login, if not already on a protected page
+          if (pathname === '/login' || pathname === '/signup') {
+              router.push('/influencer-finder');
+          }
         } else {
+          // If user exists in Firebase Auth but not in Firestore, sign them out.
           setUser(null); 
           await firebaseSignOut(auth);
         }
@@ -74,7 +81,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setFirebaseUser(null);
         setUser(null);
         await clearSessionCookie(); // Clear session cookie on logout
-        if (!['/login', '/signup', '/', '/pricing'].includes(pathname)) {
+
+        // If logged out, redirect to login page if they are on a protected route
+        const protectedRoutes = ['/influencer-finder', '/dashboard'];
+        const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
+        if (isProtectedRoute) {
             router.push('/login');
         }
       }
@@ -86,12 +97,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
+    // The onAuthStateChanged listener will handle the redirect.
   };
 
   const signOut = async () => {
     await firebaseSignOut(auth);
-    // Client-side state is cleared by the onAuthStateChanged listener.
-    // The listener also calls clearSessionCookie.
+    // The onAuthStateChanged listener will handle clearing state and redirecting.
   };
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };
