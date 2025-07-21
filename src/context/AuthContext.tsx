@@ -3,10 +3,10 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
-import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
-import { auth, db } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -22,22 +22,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setIsLoading(true);
       if (fbUser) {
         setFirebaseUser(fbUser);
-        const userDocRef = doc(db, 'users', fbUser.uid);
-        const userDoc = await getDoc(userDocRef);
-
-        if (userDoc.exists()) {
-          const userData = userDoc.data() as User;
-          setUser(userData);
-          await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-        } else {
-          setUser(null); 
-          await firebaseSignOut(auth);
+        // After auth state changes, fetch user data from our own API
+        // This avoids direct client-to-firestore connection issues.
+        try {
+          const res = await fetch('/api/user');
+          if (res.ok) {
+            const userData = await res.json();
+            setUser(userData);
+          } else {
+            // This can happen if the session cookie is not set yet or is invalid.
+            // Sign out to clear state.
+            await firebaseSignOut(auth);
+            setUser(null);
+          }
+        } catch (e) {
+            console.error("Failed to fetch user data", e);
+            await firebaseSignOut(auth);
+            setUser(null);
         }
       } else {
         setFirebaseUser(null);
@@ -48,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     return () => unsubscribe();
   }, []);
+
 
   const signIn = useCallback(async (email: string, password: string) => {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -62,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!response.ok) {
         const errorData = await response.json();
         console.error("Session cookie creation failed:", errorData);
-        throw new Error('Failed to set session cookie');
+        throw new Error(errorData.error || 'Failed to set session cookie');
     }
   }, []);
 
@@ -79,12 +89,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };
 
+  // While the initial user state is loading, show a spinner.
   if (isLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
         </div>
     )
+  }
+
+  // Once loading is complete, handle redirects
+  const isProtectedRoute = pathname.startsWith('/influencer-finder') || pathname.startsWith('/dashboard');
+  if (!isLoading && !user && isProtectedRoute) {
+    router.push('/login');
+    return null; // or a loading spinner
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

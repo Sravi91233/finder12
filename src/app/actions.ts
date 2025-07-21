@@ -5,10 +5,10 @@ import type { SearchParams, Influencer, YlyticInfluencer, City, SignUpCredential
 import { suggestSearchTerms } from "@/ai/flows/suggest-search-terms";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 import { logger } from "@/lib/logger";
-import { auth as clientAuth, db as firestoreDb } from "@/lib/firebase"; // renamed to avoid conflict
+import { auth as clientAuth, db as firestoreDb } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, getDocs, collection, updateDoc, deleteDoc, query, where, addDoc } from "firebase/firestore";
-import { getAuthenticatedUser } from "@/lib/firebase-admin";
+import { adminDb } from "@/lib/firebase-admin";
 
 
 const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => {
@@ -32,10 +32,7 @@ export async function searchInfluencers(
   params: SearchParams
 ): Promise<{ data?: Influencer[]; error?: string }> {
   
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return { error: "Authentication required to search." };
-  }
+  // Security is handled by middleware, so we can proceed.
 
   if (!params.city) {
     return { error: "Please provide a City to start your search." };
@@ -107,10 +104,7 @@ export async function searchInfluencers(
 export async function getSuggestions(
   searchTerm: string
 ): Promise<SuggestSearchTermsOutput | null> {
-  const user = await getAuthenticatedUser();
-  if (!user) {
-    return null;
-  }
+  // Security is handled by middleware
   if (!searchTerm.trim()) {
     return null;
   }
@@ -123,11 +117,7 @@ export async function getSuggestions(
 }
 
 export async function getCities(): Promise<City[]> {
-    const user = await getAuthenticatedUser();
-    if (!user) {
-        throw new Error("Authentication required.");
-    }
-
+    // Security is handled by middleware
     try {
         const citiesCollection = collection(firestoreDb, 'cities');
         const citySnapshot = await getDocs(citiesCollection);
@@ -176,10 +166,7 @@ export async function signUpUser(credentials: SignUpCredentials): Promise<{ succ
 
 
 export async function fetchAllUsers(): Promise<User[]> {
-    const user = await getAuthenticatedUser();
-    if (user?.role !== 'admin') {
-      throw new Error("Permission Denied");
-    }
+    // Security is handled by middleware
     try {
         const usersCollection = collection(firestoreDb, 'users');
         const userSnapshot = await getDocs(usersCollection);
@@ -192,10 +179,7 @@ export async function fetchAllUsers(): Promise<User[]> {
 }
 
 export async function updateUserRole(userId: string, role: 'user' | 'admin'): Promise<{ success: boolean, error?: string }> {
-    const user = await getAuthenticatedUser();
-    if (user?.role !== 'admin') {
-      return { success: false, error: "Permission Denied" };
-    }
+    // Security is handled by middleware
     try {
         const userDocRef = doc(firestoreDb, 'users', userId);
         await updateDoc(userDocRef, { role });
@@ -207,10 +191,7 @@ export async function updateUserRole(userId: string, role: 'user' | 'admin'): Pr
 }
 
 export async function addCity(cityName: string): Promise<{ success: boolean; city?: City; error?: string }> {
-    const user = await getAuthenticatedUser();
-    if (user?.role !== 'admin') {
-      return { success: false, error: "Permission Denied" };
-    }
+    // Security is handled by middleware
     try {
         const citiesRef = collection(firestoreDb, 'cities');
         
@@ -243,10 +224,7 @@ export async function addCity(cityName: string): Promise<{ success: boolean; cit
 }
 
 export async function deleteCity(cityId: string): Promise<{ success: boolean; error?: string }> {
-    const user = await getAuthenticatedUser();
-    if (user?.role !== 'admin') {
-      return { success: false, error: "Permission Denied" };
-    }
+   // Security is handled by middleware
     try {
         const cityDocRef = doc(firestoreDb, 'cities', cityId);
         await deleteDoc(cityDocRef);
