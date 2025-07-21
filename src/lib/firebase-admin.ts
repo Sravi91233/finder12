@@ -9,17 +9,23 @@ config();
 // is parsed correctly.
 if (!admin.apps.length) {
   try {
-    const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
+    const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '');
     
-    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
-        throw new Error("Missing Firebase Admin credentials. Please check your .env file or Vercel environment variables.");
+    if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+        throw new Error("Missing Firebase credential: NEXT_PUBLIC_FIREBASE_PROJECT_ID");
+    }
+    if (!process.env.FIREBASE_CLIENT_EMAIL) {
+        throw new Error("Missing Firebase credential: FIREBASE_CLIENT_EMAIL");
+    }
+    if (!privateKey) {
+        throw new Error("Missing Firebase credential: FIREBASE_PRIVATE_KEY");
     }
 
     admin.initializeApp({
       credential: admin.credential.cert({
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: privateKey,
+        privateKey: privateKey.replace(/\\n/g, '\n'),
       }),
     });
     console.log('Firebase Admin SDK initialized successfully.');
