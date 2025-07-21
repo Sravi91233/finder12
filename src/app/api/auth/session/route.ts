@@ -3,6 +3,7 @@ import {NextRequest, NextResponse} from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger';
 import type { User } from '@/types';
+import { cookies } from 'next/headers';
 
 // This endpoint creates a session cookie and returns user data.
 export async function POST(request: NextRequest) {
@@ -17,12 +18,18 @@ export async function POST(request: NextRequest) {
       expiresIn,
     });
     
-    const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
+    const userDocRef = adminDb.collection('users').doc(decodedToken.uid);
+    const userDoc = await userDocRef.get();
 
     if (!userDoc.exists) {
         logger.error('User document not found for authenticated user.', { uid: decodedToken.uid });
+        // Update last login time even if document doesn't exist, though this is an edge case
+        await adminAuth.setCustomUserClaims(decodedToken.uid, { lastLogin: new Date().getTime() });
         return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
     }
+    
+    // Update last login time
+    await userDocRef.update({ lastLogin: new Date() });
     
     const user = userDoc.data() as User;
 

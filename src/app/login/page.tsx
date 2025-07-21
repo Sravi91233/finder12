@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -33,6 +34,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signIn } = useAuth();
+  const router = useRouter();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -51,6 +53,10 @@ export default function LoginPage() {
         // Use a full page refresh to ensure the session cookie is set before navigating.
         // This is the most reliable way to avoid race conditions.
         window.location.href = '/influencer-finder';
+      } else {
+        // This case might happen if signIn returns null/undefined for some reason
+        setError('Login was not successful. Please try again.');
+        setIsLoading(false);
       }
     } catch (err: any) {
       let errorMessage = "An unexpected error occurred. Please try again.";
