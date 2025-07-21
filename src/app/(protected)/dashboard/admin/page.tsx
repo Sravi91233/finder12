@@ -21,51 +21,75 @@ import {
 import { User, City } from "@/types"
 import { useState, useEffect } from "react"
 import { useAuth } from "@/context/AuthContext"
-
-
-// Mock data for now
-const mockUsers: User[] = [
-  { id: '1', name: 'Alice', email: 'alice@example.com', role: 'admin', createdAt: new Date(), lastLogin: new Date() },
-  { id: '2', name: 'Bob', email: 'bob@example.com', role: 'user', createdAt: new Date(), lastLogin: new Date() },
-  { id: '3', name: 'Charlie', email: 'charlie@example.com', role: 'user', createdAt: new Date(), lastLogin: new Date() },
-]
-
-const mockCities: City[] = [
-    { id: 1, name: 'New York' },
-    { id: 2, name: 'Los Angeles' },
-    { id: 3, name: 'London' },
-]
+import { fetchAllUsers, updateUserRole, addCity as addCityAction, deleteCity as deleteCityAction, getCities } from "@/app/actions";
+import { useToast } from "@/hooks/use-toast"
 
 
 export default function AdminDashboardPage() {
     const { user } = useAuth();
-    const [users, setUsers] = useState<User[]>(mockUsers);
-    const [cities, setCities] = useState<City[]>(mockCities);
+    const { toast } = useToast();
+    const [users, setUsers] = useState<User[]>([]);
+    const [cities, setCities] = useState<City[]>([]);
     const [newCity, setNewCity] = useState('');
+    const [isLoading, setIsLoading] = useState(true);
 
-    // In a real app, you would fetch this data
-    // useEffect(() => {
-    //     if (user?.role === 'admin') {
-    //         fetchAllUsers().then(setUsers);
-    //         getAllCities().then(setCities);
-    //     }
-    // }, [user]);
+    const refreshData = async () => {
+        if (user?.role !== 'admin') return;
+        setIsLoading(true);
+        try {
+            const [userList, cityList] = await Promise.all([
+                fetchAllUsers(),
+                getCities()
+            ]);
+            setUsers(userList);
+            setCities(cityList);
+        } catch (error) {
+            toast({
+                variant: 'destructive',
+                title: 'Error fetching data',
+                description: 'Could not load administrative data. Please try again later.'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+
+    useEffect(() => {
+        refreshData();
+    }, [user]);
 
 
     const handleAddCity = async () => {
         if (!newCity.trim()) return;
-        // const addedCity = await addCityAction(newCity);
-        // if (addedCity) {
-        //   setCities([...cities, addedCity]);
-        //   setNewCity('');
-        // }
-        alert(`Would add city: ${newCity}`);
+        const result = await addCityAction(newCity);
+        if (result.success && result.city) {
+          setCities([...cities, result.city]);
+          setNewCity('');
+          toast({ title: "City Added", description: `${newCity} has been added.` });
+        } else {
+            toast({ variant: 'destructive', title: "Error", description: result.error });
+        }
     };
+
+    const handleDeleteCity = async (cityId: number, cityName: string) => {
+        const result = await deleteCityAction(cityId);
+        if (result.success) {
+            setCities(cities.filter(c => c.id !== cityId));
+            toast({ title: "City Deleted", description: `${cityName} has been removed.` });
+        } else {
+             toast({ variant: 'destructive', title: "Error", description: result.error });
+        }
+    }
     
     const handleRoleChange = async (userId: string, newRole: 'user' | 'admin') => {
-        // await updateUserRoleAction(userId, newRole);
-        // setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-         alert(`Would change user ${userId} to ${newRole}`);
+        const result = await updateUserRole(userId, newRole);
+        if (result.success) {
+            setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+            toast({ title: "Role Updated", description: `User role has been changed to ${newRole}.` });
+        } else {
+            toast({ variant: 'destructive', title: "Error", description: result.error });
+        }
     };
 
 
@@ -100,12 +124,20 @@ export default function AdminDashboardPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {users.map((u) => (
+                                {isLoading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="text-center">Loading users...</TableCell>
+                                    </TableRow>
+                                ) : users.map((u) => (
                                 <TableRow key={u.id}>
                                     <TableCell>{u.name}</TableCell>
                                     <TableCell>{u.email}</TableCell>
                                     <TableCell>
-                                         <Select value={u.role} onValueChange={(value: 'user' | 'admin') => handleRoleChange(u.id, value)}>
+                                         <Select 
+                                            value={u.role} 
+                                            onValueChange={(value: 'user' | 'admin') => handleRoleChange(u.id, value)}
+                                            disabled={u.id === user.id} // Admin cannot change their own role
+                                        >
                                             <SelectTrigger className="w-[120px]">
                                                 <SelectValue placeholder="Select role" />
                                             </SelectTrigger>
@@ -145,11 +177,15 @@ export default function AdminDashboardPage() {
                                 </TableRow>
                             </TableHeader>
                              <TableBody>
-                                {cities.map(city => (
+                                {isLoading ? (
+                                     <TableRow>
+                                        <TableCell colSpan={2} className="text-center">Loading cities...</TableCell>
+                                    </TableRow>
+                                ) : cities.map(city => (
                                     <TableRow key={city.id}>
                                         <TableCell>{city.name}</TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="destructive" size="sm" onClick={() => alert(`Would delete ${city.name}`)}>Delete</Button>
+                                            <Button variant="destructive" size="sm" onClick={() => handleDeleteCity(city.id, city.name)}>Delete</Button>
                                         </TableCell>
                                     </TableRow>
                                 ))}

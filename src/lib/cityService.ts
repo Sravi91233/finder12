@@ -84,3 +84,32 @@ export function saveInfluencers(cityName: string, influencers: Omit<Influencer, 
     // Optionally re-throw or handle the error as needed
   }
 }
+
+
+export function addCity(cityName: string): { city?: City; error?: string } {
+    try {
+        // Check if city already exists
+        const existing = db.prepare('SELECT id FROM cities WHERE lower(name) = lower(?)').get(cityName.toLowerCase());
+        if (existing) {
+            return { error: 'This city already exists.' };
+        }
+        
+        const info = db.prepare('INSERT INTO cities (name) VALUES (?)').run(cityName);
+        const newCity: City = { id: info.lastInsertRowid as number, name: cityName };
+        return { city: newCity };
+    } catch (e) {
+        logger.error(`Failed to add city: ${cityName}`, e);
+        throw new Error('Database error while adding city.');
+    }
+}
+
+export function deleteCity(cityId: number): void {
+    try {
+        // In a real app, you might want to handle what happens to influencers in this city.
+        // For now, we'll just delete the city.
+        db.prepare('DELETE FROM cities WHERE id = ?').run(cityId);
+    } catch(e) {
+        logger.error(`Failed to delete city with id: ${cityId}`, e);
+        throw new Error('Database error while deleting city.');
+    }
+}
