@@ -1,13 +1,11 @@
 
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { Influencer, SearchParams, City } from "@/types";
 import { InfluencerSearchForm } from "@/components/influencer-search-form";
 import { InfluencerResultsTable } from "@/components/influencer-results-table";
-import { Icons } from "@/components/icons";
 import { searchInfluencers, getInfluencersByCity, getCities } from "@/app/actions";
-import { Separator } from "@/components/ui/separator";
 
 export default function InfluenceFinderPage() {
   const [results, setResults] = useState<Influencer[]>([]);
@@ -16,13 +14,13 @@ export default function InfluenceFinderPage() {
   const [isLiveSearch, setIsLiveSearch] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
 
-  useState(() => {
+  useEffect(() => {
     async function fetchCities() {
       const cityList = await getCities();
       setCities(cityList);
     }
     fetchCities();
-  });
+  }, []);
 
 
   const handleCitySelect = useCallback(async (city: string) => {
@@ -68,48 +66,28 @@ export default function InfluenceFinderPage() {
   }, []);
 
   return (
-    <div className="min-h-screen w-full bg-background text-foreground">
-      <header className="p-4 md:p-6 border-b bg-card">
-        <div className="container mx-auto flex items-center gap-4">
-          <Icons.logo className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold text-primary font-headline">
-            InfluenceFinder
-          </h1>
+    <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <aside className="lg:col-span-1">
+        <div className="sticky top-6">
+          <h2 className="text-xl font-semibold mb-4 font-headline">
+            Search Filters
+          </h2>
+          <InfluencerSearchForm
+            onLiveSearch={handleLiveSearch}
+            onCityChange={handleCitySelect}
+            isLoading={isLoading}
+            cities={cities}
+          />
         </div>
-      </header>
-      <main className="container mx-auto p-4 md:p-6 mt-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <aside className="lg:col-span-1">
-            <div className="sticky top-6">
-              <h2 className="text-xl font-semibold mb-4 font-headline">
-                Search Filters
-              </h2>
-              <InfluencerSearchForm
-                onLiveSearch={handleLiveSearch}
-                onCityChange={handleCitySelect}
-                isLoading={isLoading}
-                cities={cities}
-              />
-            </div>
-          </aside>
-          <div className="lg:col-span-3">
-            <InfluencerResultsTable
-              influencers={results}
-              isLoading={isLoading}
-              error={error}
-              isLiveSearch={isLiveSearch}
-            />
-          </div>
-        </div>
-      </main>
-      <footer className="p-4 md:p-6 mt-8">
-        <div className="container mx-auto text-center text-sm text-muted-foreground">
-          <Separator className="mb-4" />
-          <p>
-            Built with Next.js and ShadCN. Powered by Ylytic API on RapidAPI.
-          </p>
-        </div>
-      </footer>
+      </aside>
+      <div className="lg:col-span-3">
+        <InfluencerResultsTable
+          influencers={results}
+          isLoading={isLoading}
+          error={error}
+          isLiveSearch={isLiveSearch}
+        />
+      </div>
     </div>
   );
 }

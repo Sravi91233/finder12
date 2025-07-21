@@ -51,3 +51,13 @@ export interface SignUpCredentials {
     email: string;
     password: string;
 }
+
+// Represents the user data stored in Firestore
+export interface User {
+    id: string;
+    name: string;
+    email: string;
+    role: 'user' | 'admin';
+    createdAt: any; // Should be a Timestamp
+    lastLogin: any; // Should be a Timestamp
+}
