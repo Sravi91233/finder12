@@ -172,7 +172,7 @@ export async function fetchAllUsers(): Promise<User[]> {
     const currentUser = await getAuthenticatedUser();
     if (currentUser?.role !== 'admin') {
         logger.warn('Unauthorized attempt to fetch all users by', {userId: currentUser?.id});
-        return [];
+        throw new Error("Permission Denied. You must be an administrator.");
     }
 
     try {
@@ -182,7 +182,7 @@ export async function fetchAllUsers(): Promise<User[]> {
         return userList;
     } catch (error) {
         logger.error('Failed to fetch all users', error);
-        return [];
+        throw new Error('Failed to fetch user list.');
     }
 }
 
@@ -223,12 +223,12 @@ export async function addCity(cityName: string): Promise<{ success: boolean; cit
         };
         const newDocRef = await addDoc(citiesRef, newCityData);
         
-        // Firestore timestamps are objects, not Dates, until read back.
-        // We'll create a client-side representation for immediate UI update.
+        // Return a representation of the city object for immediate UI updates.
+        // The actual timestamp will be populated by the server.
         const returnedCity: City = {
             id: newDocRef.id,
             name: newCityData.name,
-            createdAt: { seconds: Math.floor(Date.now() / 1000) } // Simulate a timestamp object
+            createdAt: { seconds: Math.floor(Date.now() / 1000), nanoseconds: 0 } // Simulate a timestamp object
         };
 
         return { success: true, city: returnedCity };

@@ -1,6 +1,5 @@
 
 import {NextRequest, NextResponse} from 'next/server';
-import {cookies} from 'next/headers';
 import {adminAuth} from '@/lib/firebase-admin';
 
 // This is the endpoint that the client-side AuthProvider will call
@@ -15,7 +14,9 @@ export async function POST(request: NextRequest) {
     const sessionCookie = await adminAuth.createSessionCookie(idToken, {
       expiresIn,
     });
-    cookies().set('session', sessionCookie, {
+    
+    const response = NextResponse.json({status: 'success'});
+    response.cookies.set('session', sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -23,14 +24,22 @@ export async function POST(request: NextRequest) {
       sameSite: 'lax',
     });
 
-    return NextResponse.json({status: 'success'});
+    return response;
+
   } catch (error) {
     return NextResponse.json({status: 'error', error}, {status: 401});
   }
 }
 
 // This endpoint clears the session cookie when a user logs out.
-export async function DELETE() {
-  cookies().delete('session');
-  return NextResponse.json({status: 'success'});
+export async function DELETE(request: NextRequest) {
+  const response = NextResponse.json({status: 'success'});
+  response.cookies.set('session', '', {
+    maxAge: 0,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    path: '/',
+    sameSite: 'lax',
+  });
+  return response;
 }

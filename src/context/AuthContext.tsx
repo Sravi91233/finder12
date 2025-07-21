@@ -29,6 +29,8 @@ async function fetchSessionCookie(user: FirebaseUser) {
             body: JSON.stringify({ idToken }),
         });
         if (!response.ok) {
+            const errorData = await response.json();
+            console.error("Session cookie creation failed:", errorData);
             throw new Error('Failed to set session cookie');
         }
     } catch (error) {
@@ -88,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await firebaseSignOut(auth);
+    // Client-side state is cleared by the onAuthStateChanged listener.
+    // The listener also calls clearSessionCookie.
   };
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };
