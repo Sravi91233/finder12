@@ -60,7 +60,8 @@ export async function POST(request: NextRequest) {
 // This endpoint verifies an existing session cookie and returns user data.
 export async function GET() {
     logger.debug("SESSION API (GET): Received request.");
-    const sessionCookie = cookies().get('session')?.value;
+    const cookieStore = cookies();
+    const sessionCookie = cookieStore.get('session')?.value;
 
     if (!sessionCookie) {
         logger.warn('SESSION API (GET): Session verify request without cookie.');

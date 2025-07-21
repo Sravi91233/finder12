@@ -31,10 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Let's verify the session with our backend and get the full user profile.
             // This ensures client and server state are in sync.
             try {
-                const response = await fetch('/api/auth/session', {
-                    method: 'GET',
-                    headers: { 'Content-Type': 'application/json' },
-                });
+                const response = await fetch('/api/auth/session');
                 if (response.ok) {
                     const userData: User = await response.json();
                     logger.debug("AUTH CONTEXT: Session verified on load, user set.", { email: userData.email });
