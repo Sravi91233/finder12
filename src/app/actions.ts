@@ -7,7 +7,8 @@ import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 import { logger } from "@/lib/logger";
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, getDocs, collection, writeBatch, getDoc, query, collectionGroup } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import * as cityService from '@/lib/cityService';
 
 
 const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Omit<Influencer, 'city_id'>[] => {
@@ -90,7 +91,7 @@ export async function searchInfluencers(
     }
     
     const mappedData = mapYlyticToInfluencer(creators);
-    await saveInfluencers(params.city, mappedData);
+    cityService.saveInfluencers(params.city, mappedData);
     
     const finalData = await getInfluencersByCity(params.city);
     return { data: finalData };
@@ -117,55 +118,20 @@ export async function getSuggestions(
 
 export async function getInfluencersByCity(city: string): Promise<Influencer[]> {
   try {
-    const influencersRef = collection(db, "cities", city, "influencers");
-    const snapshot = await getDocs(influencersRef);
-    if (snapshot.empty) {
-        return [];
-    }
-    return snapshot.docs.map(doc => doc.data() as Influencer);
+    return cityService.getInfluencersByCity(city);
   } catch(e) {
-    logger.error(`Error fetching influencers by city from Firestore for ${city}`, e);
+    logger.error(`Error fetching influencers by city for ${city}`, e);
     return [];
   }
 }
 
 export async function getCities(): Promise<City[]> {
     try {
-        const citiesRef = collection(db, "cities");
-        const snapshot = await getDocs(citiesRef);
-        return snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name } as City));
+        return cityService.getAllCities();
     } catch(e) {
-        logger.error("Error fetching cities from Firestore", e);
+        logger.error("Error fetching cities", e);
         return [];
     }
-}
-
-
-export async function saveInfluencers(cityName: string, influencers: Omit<Influencer, 'city_id'>[]): Promise<void> {
-  try {
-    const cityRef = doc(db, "cities", cityName);
-    const citySnap = await getDoc(cityRef);
-
-    const batch = writeBatch(db);
-
-    // If city doesn't exist, create it
-    if (!citySnap.exists()) {
-        batch.set(cityRef, { name: cityName, createdAt: serverTimestamp() });
-    }
-
-    // Add/update each influencer in a subcollection
-    for (const influencer of influencers) {
-        const influencerRef = doc(db, "cities", cityName, "influencers", influencer.id);
-        batch.set(influencerRef, { ...influencer, lastUpdated: serverTimestamp() });
-    }
-
-    await batch.commit();
-    logger.info(`Successfully saved ${influencers.length} influencers for city: ${cityName} to Firestore`);
-
-  } catch (error) {
-    logger.error(`Failed to save influencers for city: ${cityName} to Firestore`, error);
-    // Optionally re-throw or handle the error as needed
-  }
 }
 
 

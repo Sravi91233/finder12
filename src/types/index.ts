@@ -12,6 +12,7 @@ export interface Influencer {
   location_city: string;
   profile_pic_url: string;
   category: string;
+  city_id?: number;
 }
 
 export interface SearchParams {
@@ -42,7 +43,7 @@ export interface YlyticInfluencer {
 }
 
 export interface City {
-    id: string; // Firestore document ID is a string
+    id: number;
     name: string;
 }
 
