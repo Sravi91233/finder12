@@ -29,13 +29,13 @@ export const adminDb = admin.firestore();
  * @returns {Promise<User | null>} The user object or null if not authenticated.
  */
 export async function getAuthenticatedUser(): Promise<User | null> {
-    const sessionCookie = cookies().get('session')?.value;
-    if (!sessionCookie) {
+    const sessionCookieValue = cookies().get('session')?.value;
+    if (!sessionCookieValue) {
         return null;
     }
 
     try {
-        const decodedIdToken = await adminAuth.verifySessionCookie(sessionCookie, true);
+        const decodedIdToken = await adminAuth.verifySessionCookie(sessionCookieValue, true);
         const userDoc = await adminDb.collection('users').doc(decodedIdToken.uid).get();
 
         if (!userDoc.exists) {
@@ -45,6 +45,7 @@ export async function getAuthenticatedUser(): Promise<User | null> {
         return userDoc.data() as User;
     } catch (error) {
         // Session cookie is invalid or expired.
+        console.error("Error verifying session cookie", error);
         return null;
     }
 }

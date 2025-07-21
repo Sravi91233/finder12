@@ -7,7 +7,7 @@ import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 import { logger } from "@/lib/logger";
 import { auth as clientAuth, db as firestoreDb } from "@/lib/firebase"; // renamed to avoid conflict
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, getDocs, collection, updateDoc, deleteDoc, query, where } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDocs, collection, updateDoc, deleteDoc, query, where, addDoc } from "firebase/firestore";
 import { getAuthenticatedUser } from "@/lib/firebase-admin";
 
 
@@ -210,15 +210,21 @@ export async function addCity(cityName: string): Promise<{ success: boolean; cit
             return { success: false, error: 'This city already exists.' };
         }
 
-        const newCityRef = doc(collection(firestoreDb, 'cities'));
         const newCityData = { 
-            id: newCityRef.id,
             name: cityName, 
             createdAt: serverTimestamp() 
         };
-        await setDoc(newCityRef, newCityData);
+        const newDocRef = await addDoc(citiesRef, newCityData);
         
-        return { success: true, city: { ...newCityData, createdAt: new Date() } };
+        // Firestore timestamps are objects, not Dates, until read back.
+        // We'll create a client-side representation for immediate UI update.
+        const returnedCity: City = {
+            id: newDocRef.id,
+            name: newCityData.name,
+            createdAt: { seconds: Math.floor(Date.now() / 1000) } // Simulate a timestamp object
+        };
+
+        return { success: true, city: returnedCity };
 
     } catch(e: any) {
         logger.error("Error adding city to Firestore", { error: e });
