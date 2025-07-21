@@ -46,10 +46,12 @@ export default function LoginPage() {
     setIsLoading(true);
     setError(null);
     try {
-      await signIn(values.email, values.password);
-      // Use a full page refresh to ensure the session cookie is set before navigating.
-      // This is the most reliable way to avoid race conditions.
-      window.location.href = '/influencer-finder';
+      const user = await signIn(values.email, values.password);
+      if (user) {
+        // Use a full page refresh to ensure the session cookie is set before navigating.
+        // This is the most reliable way to avoid race conditions.
+        window.location.href = '/influencer-finder';
+      }
     } catch (err: any) {
       let errorMessage = "An unexpected error occurred. Please try again.";
       // Firebase auth errors have a 'code' property

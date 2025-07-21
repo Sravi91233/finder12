@@ -8,7 +8,6 @@ import { logger } from "@/lib/logger";
 import { auth as clientAuth, db as firestoreDb } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, serverTimestamp, getDocs, collection, updateDoc, deleteDoc, query, where, addDoc } from "firebase/firestore";
-import { adminDb } from "@/lib/firebase-admin";
 
 
 const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => {
