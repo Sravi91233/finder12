@@ -21,3 +21,30 @@ if (!admin.apps.length) {
 
 export const adminAuth = admin.auth();
 export const adminDb = admin.firestore();
+
+
+/**
+ * Gets the authenticated user from the session cookie.
+ * This function is for use in server-side code (Server Actions, API Routes).
+ * It verifies the session cookie with Firebase Admin and fetches user data from Firestore.
+ */
+export async function getAuthenticatedUser(): Promise<User | null> {
+    const sessionCookieValue = cookies().get('session')?.value;
+    if (!sessionCookieValue) {
+        return null;
+    }
+
+    try {
+        const decodedToken = await adminAuth.verifySessionCookie(sessionCookieValue, true);
+        const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
+
+        if (!userDoc.exists) {
+            return null;
+        }
+
+        return userDoc.data() as User;
+    } catch (error) {
+        console.error("Error verifying session cookie:", error);
+        return null;
+    }
+}
