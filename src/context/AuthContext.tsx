@@ -5,7 +5,6 @@ import { createContext, useContext, useEffect, useState, ReactNode, useCallback 
 import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import type { User } from '@/types';
-import { Loader2 } from 'lucide-react';
 
 interface AuthContextType {
   user: User | null;
@@ -27,9 +26,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsLoading(true);
         if (fbUser) {
             setFirebaseUser(fbUser);
-            // The user profile will be loaded via a separate mechanism
-            // or will be populated by the signIn function.
-            // For now, we just acknowledge the firebase user exists.
+            // This is just to update the firebase user state.
+            // The full user profile is loaded by the signIn function or the ProtectedRoutes component.
         } else {
             setFirebaseUser(null);
             setUser(null);

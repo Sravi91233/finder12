@@ -3,6 +3,7 @@ import {NextRequest, NextResponse} from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger';
 import type { User } from '@/types';
+import { cookies } from 'next/headers';
 
 // This endpoint creates a session cookie and returns user data.
 export async function POST(request: NextRequest) {
