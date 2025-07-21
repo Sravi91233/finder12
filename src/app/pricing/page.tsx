@@ -73,7 +73,7 @@ export default function PricingPage() {
        <main className="flex-1">
         <section className="container mx-auto text-center py-16 md:py-24">
              <h2 className="text-4xl md:text-5xl font-extrabold tracking-tight font-headline">
-                Find the Plan That&apos;s Right for You
+                Find the Plan That's Right for You
             </h2>
             <p className="mt-4 max-w-2xl mx-auto text-lg text-muted-foreground">
                 Simple, transparent pricing. No hidden fees.
