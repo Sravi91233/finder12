@@ -5,15 +5,14 @@ import type { SearchParams, Influencer, YlyticInfluencer, City, SignUpCredential
 import { suggestSearchTerms } from "@/ai/flows/suggest-search-terms";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 import { logger } from "@/lib/logger";
-import { getAllCities, getInfluencersByCity as dbGetInfluencersByCity, saveInfluencers } from '@/lib/cityService';
 import { auth, db } from "@/lib/firebase";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDocs, collection, writeBatch, getDoc, query, collectionGroup } from "firebase/firestore";
 
 
 const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Omit<Influencer, 'city_id'>[] => {
     return ylyticData.map(creator => ({
-        id: creator.handle,
+        id: creator.handle.replace(/@/g, ''),
         username: creator.handle.startsWith('@') ? creator.handle.substring(1) : creator.handle,
         full_name: creator.handle, 
         biography: creator.bio,
@@ -43,23 +42,23 @@ export async function searchInfluencers(
     return { error: "API key is not configured. Please contact support." };
   }
 
-  const query = new URLSearchParams({ current_page: '1' });
+  const queryParams = new URLSearchParams({ current_page: '1' });
   
-  if (params.bio_keyword) query.append("bio_contains", params.bio_keyword);
-  if (params.connector && params.connector !== 'all') query.append("connector", params.connector);
-  if (params.category && params.category !== 'all') query.append("category", params.category);
-  if (params.country) query.append("country", params.country);
-  if (params.city) query.append("city", params.city);
+  if (params.bio_keyword) queryParams.append("bio_contains", params.bio_keyword);
+  if (params.connector && params.connector !== 'all') queryParams.append("connector", params.connector);
+  if (params.category && params.category !== 'all') queryParams.append("category", params.category);
+  if (params.country) queryParams.append("country", params.country);
+  if (params.city) queryParams.append("city", params.city);
 
-  if (params.followers_min !== undefined) query.append("followers_minimum", params.followers_min.toString());
-  if (params.followers_max !== undefined && params.followers_max < 10000000) query.append("followers_maximum", params.followers_max.toString());
-  if (params.engagement_rate_min !== undefined) query.append("engagement_rate_minimum", params.engagement_rate_min.toString());
-  if (params.engagement_rate_max !== undefined && params.engagement_rate_max < 100) query.append("engagement_rate_maximum", params.engagement_rate_max.toString());
-  if (params.posts_min !== undefined) query.append("posts_minimum", params.posts_min.toString());
-  if (params.posts_max !== undefined && params.posts_max < 5000) query.append("posts_maximum", params.posts_max.toString());
+  if (params.followers_min !== undefined) queryParams.append("followers_minimum", params.followers_min.toString());
+  if (params.followers_max !== undefined && params.followers_max < 10000000) queryParams.append("followers_maximum", params.followers_max.toString());
+  if (params.engagement_rate_min !== undefined) queryParams.append("engagement_rate_minimum", params.engagement_rate_min.toString());
+  if (params.engagement_rate_max !== undefined && params.engagement_rate_max < 100) queryParams.append("engagement_rate_maximum", params.engagement_rate_max.toString());
+  if (params.posts_min !== undefined) queryParams.append("posts_minimum", params.posts_min.toString());
+  if (params.posts_max !== undefined && params.posts_max < 5000) queryParams.append("posts_maximum", params.posts_max.toString());
 
 
-  const url = `https://ylytic-influencers-api.p.rapidapi.com/ylytic/admin/api/v1/discovery?${query.toString()}`;
+  const url = `https://ylytic-influencers-api.p.rapidapi.com/ylytic/admin/api/v1/discovery?${queryParams.toString()}`;
   logger.debug(`Fetching from URL: ${url}`);
 
   try {
@@ -93,7 +92,7 @@ export async function searchInfluencers(
     const mappedData = mapYlyticToInfluencer(creators);
     await saveInfluencers(params.city, mappedData);
     
-    const finalData = await dbGetInfluencersByCity(params.city);
+    const finalData = await getInfluencersByCity(params.city);
     return { data: finalData };
 
   } catch (error) {
@@ -116,24 +115,59 @@ export async function getSuggestions(
   }
 }
 
-
 export async function getInfluencersByCity(city: string): Promise<Influencer[]> {
   try {
-    return await dbGetInfluencersByCity(city);
+    const influencersRef = collection(db, "cities", city, "influencers");
+    const snapshot = await getDocs(influencersRef);
+    if (snapshot.empty) {
+        return [];
+    }
+    return snapshot.docs.map(doc => doc.data() as Influencer);
   } catch(e) {
-    logger.error("Error fetching influencers by city from DB", e);
+    logger.error(`Error fetching influencers by city from Firestore for ${city}`, e);
     return [];
   }
 }
 
 export async function getCities(): Promise<City[]> {
     try {
-        return await getAllCities();
+        const citiesRef = collection(db, "cities");
+        const snapshot = await getDocs(citiesRef);
+        return snapshot.docs.map(doc => ({ id: doc.id, name: doc.data().name } as City));
     } catch(e) {
-        logger.error("Error fetching cities from DB", e);
+        logger.error("Error fetching cities from Firestore", e);
         return [];
     }
 }
+
+
+export async function saveInfluencers(cityName: string, influencers: Omit<Influencer, 'city_id'>[]): Promise<void> {
+  try {
+    const cityRef = doc(db, "cities", cityName);
+    const citySnap = await getDoc(cityRef);
+
+    const batch = writeBatch(db);
+
+    // If city doesn't exist, create it
+    if (!citySnap.exists()) {
+        batch.set(cityRef, { name: cityName, createdAt: serverTimestamp() });
+    }
+
+    // Add/update each influencer in a subcollection
+    for (const influencer of influencers) {
+        const influencerRef = doc(db, "cities", cityName, "influencers", influencer.id);
+        batch.set(influencerRef, { ...influencer, lastUpdated: serverTimestamp() });
+    }
+
+    await batch.commit();
+    logger.info(`Successfully saved ${influencers.length} influencers for city: ${cityName} to Firestore`);
+
+  } catch (error) {
+    logger.error(`Failed to save influencers for city: ${cityName} to Firestore`, error);
+    // Optionally re-throw or handle the error as needed
+  }
+}
+
 
 export async function signUpUser(credentials: SignUpCredentials): Promise<{ success: boolean; error?: string }> {
   const { name, email, password } = credentials;

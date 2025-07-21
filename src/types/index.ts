@@ -42,7 +42,7 @@ export interface YlyticInfluencer {
 }
 
 export interface City {
-    id: number;
+    id: string; // Firestore document ID is a string
     name: string;
 }
 
