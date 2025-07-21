@@ -9,7 +9,7 @@ config();
 // is parsed correctly.
 if (!admin.apps.length) {
   try {
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY;
+    const privateKey = (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
     
     if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
         throw new Error("Missing Firebase Admin credentials. Please check your .env file or Vercel environment variables.");
