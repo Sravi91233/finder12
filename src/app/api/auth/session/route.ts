@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('session', sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
-      secure: true,
+      secure: process.env.NODE_ENV === 'production',
       path: '/',
       sameSite: 'lax',
     });
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET() {
-  const cookieStore = await cookies();
+  const cookieStore = cookies();
   const sessionCookie = cookieStore.get('session')?.value;
 
   if (!sessionCookie) {
@@ -84,7 +84,7 @@ export async function DELETE() {
   response.cookies.set('session', '', {
     maxAge: 0,
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === 'production',
     path: '/',
     sameSite: 'lax',
   });
