@@ -114,6 +114,13 @@ export async function getSuggestions(
 }
 
 export async function getCities(): Promise<City[]> {
+    const currentUser = await getAuthenticatedUser();
+    if (!currentUser) {
+        // This will be caught by the try-catch block in the component
+        // and can be handled as a permissions error.
+        throw new Error("Authentication required.");
+    }
+    
     try {
         const citiesCollection = collection(firestoreDb, 'cities');
         const citySnapshot = await getDocs(citiesCollection);
