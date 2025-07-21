@@ -55,7 +55,7 @@ export default function LoginPage() {
       logger.debug("LOGIN PAGE: signIn call successful. User data received:", user);
 
       if (user) {
-        logger.debug("LOGIN PAGE: User exists. Navigating with router.push to /influencer-finder...");
+        logger.debug("LOGIN PAGE: User exists. Navigating to /influencer-finder...");
         router.push('/influencer-finder');
       } else {
         const loginError = 'Login was not successful. Please try again.';

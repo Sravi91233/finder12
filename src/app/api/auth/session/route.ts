@@ -86,7 +86,10 @@ export async function GET() {
 
     } catch (error: any) {
         logger.error('SESSION API (GET): Session verification failed', { message: error.message, code: error.code });
-        return NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
+        // Clear the invalid cookie
+        const response = NextResponse.json({ error: 'Invalid or expired session' }, { status: 401 });
+        response.cookies.set('session', '', { maxAge: 0 });
+        return response;
     }
 }
 
@@ -104,3 +107,4 @@ export async function DELETE() {
   });
   return response;
 }
+
