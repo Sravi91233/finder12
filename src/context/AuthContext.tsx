@@ -19,6 +19,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Function to fetch the session cookie
+async function fetchSessionCookie(user: FirebaseUser) {
+    const idToken = await user.getIdToken();
+    try {
+        const response = await fetch('/api/auth/session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ idToken }),
+        });
+        if (!response.ok) {
+            throw new Error('Failed to set session cookie');
+        }
+    } catch (error) {
+        console.error('Session cookie error:', error);
+    }
+}
+
+// Function to clear the session cookie
+async function clearSessionCookie() {
+    try {
+        await fetch('/api/auth/session', { method: 'DELETE' });
+    } catch (error) {
+        console.error('Failed to clear session cookie:', error);
+    }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -37,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = userDoc.data() as User;
           setUser(userData);
           await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
+          await fetchSessionCookie(fbUser); // Set session cookie on login
         } else {
           setUser(null); 
           await firebaseSignOut(auth);
@@ -44,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       } else {
         setFirebaseUser(null);
         setUser(null);
-        // If user is not authenticated and is trying to access a protected route, redirect to login
+        await clearSessionCookie(); // Clear session cookie on logout
         if (!['/login', '/signup', '/', '/pricing'].includes(pathname)) {
             router.push('/login');
         }

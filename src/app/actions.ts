@@ -5,9 +5,10 @@ import type { SearchParams, Influencer, YlyticInfluencer, City, SignUpCredential
 import { suggestSearchTerms } from "@/ai/flows/suggest-search-terms";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 import { logger } from "@/lib/logger";
-import { auth, db as firestoreDb } from "@/lib/firebase"; // renamed to avoid conflict with local db
+import { auth as clientAuth, db as firestoreDb } from "@/lib/firebase"; // renamed to avoid conflict
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, getDocs, collection, updateDoc, deleteDoc, getDoc, query, where, writeBatch } from "firebase/firestore";
+import { doc, setDoc, serverTimestamp, getDocs, collection, updateDoc, deleteDoc, query, where } from "firebase/firestore";
+import { getAuthenticatedUser } from "@/lib/firebase-admin";
 
 
 const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => {
@@ -132,7 +133,7 @@ export async function signUpUser(credentials: SignUpCredentials): Promise<{ succ
   const { name, email, password } = credentials;
   
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(clientAuth, email, password);
     const user = userCredential.user;
 
     await setDoc(doc(firestoreDb, "users", user.uid), {
@@ -161,6 +162,12 @@ export async function signUpUser(credentials: SignUpCredentials): Promise<{ succ
 
 
 export async function fetchAllUsers(): Promise<User[]> {
+    const currentUser = await getAuthenticatedUser();
+    if (currentUser?.role !== 'admin') {
+        logger.warn('Unauthorized attempt to fetch all users by', {userId: currentUser?.id});
+        return [];
+    }
+
     try {
         const usersCollection = collection(firestoreDb, 'users');
         const userSnapshot = await getDocs(usersCollection);
@@ -173,6 +180,11 @@ export async function fetchAllUsers(): Promise<User[]> {
 }
 
 export async function updateUserRole(userId: string, role: 'user' | 'admin'): Promise<{ success: boolean, error?: string }> {
+    const currentUser = await getAuthenticatedUser();
+    if (currentUser?.role !== 'admin') {
+        return { success: false, error: 'Permission Denied. You must be an administrator.' };
+    }
+    
     try {
         const userDocRef = doc(firestoreDb, 'users', userId);
         await updateDoc(userDocRef, { role });
@@ -184,6 +196,11 @@ export async function updateUserRole(userId: string, role: 'user' | 'admin'): Pr
 }
 
 export async function addCity(cityName: string): Promise<{ success: boolean; city?: City; error?: string }> {
+    const currentUser = await getAuthenticatedUser();
+    if (currentUser?.role !== 'admin') {
+        return { success: false, error: 'Permission Denied. You must be an administrator.' };
+    }
+    
     try {
         const citiesRef = collection(firestoreDb, 'cities');
         const q = query(citiesRef, where('name', '==', cityName));
@@ -204,26 +221,23 @@ export async function addCity(cityName: string): Promise<{ success: boolean; cit
         return { success: true, city: { ...newCityData, createdAt: new Date() } };
 
     } catch(e: any) {
-        logger.error("Error adding city to Firestore", { code: e.code, name: e.name });
-        let errorMessage = 'Database error while adding city.';
-        if (e.code === 'permission-denied') {
-            errorMessage = 'Permission denied. You must be an administrator to add a city.';
-        }
-        return { success: false, error: errorMessage };
+        logger.error("Error adding city to Firestore", { error: e });
+        return { success: false, error: 'Database error while adding city.' };
     }
 }
 
 export async function deleteCity(cityId: string): Promise<{ success: boolean; error?: string }> {
+    const currentUser = await getAuthenticatedUser();
+    if (currentUser?.role !== 'admin') {
+        return { success: false, error: 'Permission Denied. You must be an administrator.' };
+    }
+    
     try {
         const cityDocRef = doc(firestoreDb, 'cities', cityId);
         await deleteDoc(cityDocRef);
         return { success: true };
     } catch(e: any) {
-        logger.error(`Error deleting city ${cityId}`, { code: e.code, name: e.name });
-        let errorMessage = 'Database error while deleting city.';
-         if (e.code === 'permission-denied') {
-            errorMessage = 'Permission denied. You must be an administrator to delete a city.';
-        }
-        return { success: false, error: errorMessage };
+        logger.error(`Error deleting city ${cityId}`, { error: e });
+        return { success: false, error: 'Database error while deleting city.' };
     }
 }

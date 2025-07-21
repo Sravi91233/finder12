@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
@@ -11,7 +11,6 @@ import {
   Users,
   Search,
   LogOut,
-  ChevronDown,
   User as UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -126,7 +125,7 @@ function Header() {
         {user && (
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-8 w-auto justify-start gap-2">
+                <Button variant="ghost" className="relative h-auto justify-start gap-2 p-1">
                     <Avatar className="h-8 w-8">
                         <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png`} alt={user.name} />
                         <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
