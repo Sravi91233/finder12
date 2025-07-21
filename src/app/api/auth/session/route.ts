@@ -2,6 +2,7 @@
 import {NextRequest, NextResponse} from 'next/server';
 import {adminAuth} from '@/lib/firebase-admin';
 
+// This endpoint creates a session cookie when a user logs in.
 export async function POST(request: NextRequest) {
   const {idToken} = await request.json();
 
@@ -24,12 +25,16 @@ export async function POST(request: NextRequest) {
 
     return response;
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Session cookie creation error:', error);
-    return NextResponse.json({status: 'error', error}, {status: 401});
+    return NextResponse.json(
+      { status: 'error', message: 'Failed to create session cookie.', error: error.message }, 
+      { status: 500 }
+    );
   }
 }
 
+// This endpoint clears the session cookie when a user logs out.
 export async function DELETE() {
   const response = NextResponse.json({status: 'success'});
   response.cookies.set('session', '', {

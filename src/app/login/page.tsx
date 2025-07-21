@@ -3,7 +3,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -34,7 +33,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signIn } = useAuth();
-  const router = useRouter();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -69,6 +67,9 @@ export default function LoginPage() {
             errorMessage = 'An error occurred during login. Please try again later.';
             break;
         }
+      } else if (err.message) {
+        // Handle custom errors from our API
+        errorMessage = err.message;
       }
       setError(errorMessage);
        setIsLoading(false);
