@@ -1,6 +1,9 @@
 import admin from 'firebase-admin';
 import type { User } from '@/types';
 import { cookies } from 'next/headers';
+import { config } from 'dotenv';
+
+config();
 
 if (!admin.apps.length) {
   try {
