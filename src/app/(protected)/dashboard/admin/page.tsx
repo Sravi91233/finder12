@@ -42,7 +42,9 @@ export default function AdminDashboardPage() {
                 getCities()
             ]);
             setUsers(userList);
-            setCities(cityList);
+            // Sort cities by name alphabetically
+            const sortedCities = cityList.sort((a, b) => a.name.localeCompare(b.name));
+            setCities(sortedCities);
         } catch (error) {
             toast({
                 variant: 'destructive',
@@ -66,7 +68,8 @@ export default function AdminDashboardPage() {
         if (!newCity.trim()) return;
         const result = await addCityAction(newCity);
         if (result.success && result.city) {
-          setCities([...cities, result.city]);
+          // Re-fetch and sort cities to ensure list is up to date
+          await refreshData();
           setNewCity('');
           toast({ title: "City Added", description: `${newCity} has been added.` });
         } else {
@@ -74,7 +77,7 @@ export default function AdminDashboardPage() {
         }
     };
 
-    const handleDeleteCity = async (cityId: number, cityName: string) => {
+    const handleDeleteCity = async (cityId: string, cityName: string) => {
         const result = await deleteCityAction(cityId);
         if (result.success) {
             setCities(cities.filter(c => c.id !== cityId));
@@ -175,17 +178,19 @@ export default function AdminDashboardPage() {
                              <TableHeader>
                                 <TableRow>
                                     <TableHead>City Name</TableHead>
+                                    <TableHead>Created At</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                              <TableBody>
                                 {isLoading ? (
                                      <TableRow>
-                                        <TableCell colSpan={2} className="text-center">Loading cities...</TableCell>
+                                        <TableCell colSpan={3} className="text-center">Loading cities...</TableCell>
                                     </TableRow>
                                 ) : cities.map(city => (
                                     <TableRow key={city.id}>
                                         <TableCell>{city.name}</TableCell>
+                                        <TableCell>{city.createdAt ? new Date(city.createdAt.seconds * 1000).toLocaleDateString() : 'N/A'}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="destructive" size="sm" onClick={() => handleDeleteCity(city.id, city.name)}>Delete</Button>
                                         </TableCell>

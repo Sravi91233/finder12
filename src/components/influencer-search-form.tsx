@@ -50,13 +50,12 @@ type FormValues = z.infer<typeof formSchema>;
 const categories = ["Fashion", "Beauty", "Gaming", "Tech", "Food", "Travel", "Fitness", "Lifestyle", "Books & Writing", "Health & Fitness", "Family & Relationships", "Art & Design"];
 
 interface InfluencerSearchFormProps {
-  onLiveSearch: (params: SearchParams) => void;
-  onCityChange: (city: string) => void;
+  onSearch: (params: SearchParams) => void;
   isLoading: boolean;
   cities: City[];
 }
 
-export function InfluencerSearchForm({ onLiveSearch, onCityChange, isLoading, cities }: InfluencerSearchFormProps) {
+export function InfluencerSearchForm({ onSearch, isLoading, cities }: InfluencerSearchFormProps) {
   const [suggestions, setSuggestions] = useState<SuggestSearchTermsOutput | null>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
 
@@ -74,14 +73,6 @@ export function InfluencerSearchForm({ onLiveSearch, onCityChange, isLoading, ci
     },
   });
 
-  const selectedCity = form.watch('city');
-
-  useEffect(() => {
-    if (selectedCity) {
-      onCityChange(selectedCity);
-    }
-  }, [selectedCity, onCityChange]);
-
   const onSubmit = (values: FormValues) => {
     const searchParams: SearchParams = {
       ...values,
@@ -93,7 +84,7 @@ export function InfluencerSearchForm({ onLiveSearch, onCityChange, isLoading, ci
       posts_min: values.posts[0],
       posts_max: values.posts[1],
     };
-    onLiveSearch(searchParams);
+    onSearch(searchParams);
   };
 
   const handleGetSuggestions = async () => {
@@ -115,7 +106,7 @@ export function InfluencerSearchForm({ onLiveSearch, onCityChange, isLoading, ci
     setSuggestions(null);
   }
 
-  const cityOptions = cities.map(c => ({ value: c.name, label: c.name }));
+  const cityOptions = cities.map(c => ({ value: c.name, label: c.name })).sort((a, b) => a.label.localeCompare(b.label));
 
   return (
     <Card>

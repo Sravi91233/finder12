@@ -5,46 +5,35 @@ import { useState, useCallback, useEffect } from "react";
 import type { Influencer, SearchParams, City } from "@/types";
 import { InfluencerSearchForm } from "@/components/influencer-search-form";
 import { InfluencerResultsTable } from "@/components/influencer-results-table";
-import { searchInfluencers, getInfluencersByCity, getCities } from "@/app/actions";
+import { searchInfluencers, getCities } from "@/app/actions";
+import { useToast } from "@/hooks/use-toast";
 
 export default function InfluenceFinderPage() {
   const [results, setResults] = useState<Influencer[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLiveSearch, setIsLiveSearch] = useState(false);
   const [cities, setCities] = useState<City[]>([]);
+  const { toast } = useToast();
 
   useEffect(() => {
     async function fetchCities() {
-      const cityList = await getCities();
-      setCities(cityList);
+      try {
+        const cityList = await getCities();
+        setCities(cityList);
+      } catch (e) {
+        toast({
+            variant: "destructive",
+            title: "Error fetching cities",
+            description: "Could not load cities from the database.",
+        });
+      }
     }
     fetchCities();
-  }, []);
+  }, [toast]);
 
 
-  const handleCitySelect = useCallback(async (city: string) => {
-    if (!city) {
-      setResults([]);
-      return;
-    }
+  const handleSearch = useCallback(async (params: SearchParams) => {
     setIsLoading(true);
-    setIsLiveSearch(false); // This is a cached search
-    setError(null);
-    try {
-      const data = await getInfluencersByCity(city);
-      setResults(data);
-    } catch (err) {
-      setError("Failed to fetch cached influencers.");
-      setResults([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const handleLiveSearch = useCallback(async (params: SearchParams) => {
-    setIsLoading(true);
-    setIsLiveSearch(true); // This is a live search
     setError(null);
     try {
       const response = await searchInfluencers(params);
@@ -53,9 +42,6 @@ export default function InfluenceFinderPage() {
         setResults([]);
       } else {
         setResults(response.data || []);
-        // Refresh city list after new search
-        const cityList = await getCities();
-        setCities(cityList);
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
@@ -73,8 +59,7 @@ export default function InfluenceFinderPage() {
             Search Filters
           </h2>
           <InfluencerSearchForm
-            onLiveSearch={handleLiveSearch}
-            onCityChange={handleCitySelect}
+            onSearch={handleSearch}
             isLoading={isLoading}
             cities={cities}
           />
@@ -85,7 +70,6 @@ export default function InfluenceFinderPage() {
           influencers={results}
           isLoading={isLoading}
           error={error}
-          isLiveSearch={isLiveSearch}
         />
       </div>
     </div>

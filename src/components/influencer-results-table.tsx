@@ -24,7 +24,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronsUpDown, Download, AlertCircle, ArrowUp, ArrowDown, DatabaseZap, SearchCheck } from "lucide-react";
+import { ChevronsUpDown, Download, AlertCircle, ArrowUp, ArrowDown } from "lucide-react";
 import { exportToCSV, formatNumber } from "@/lib/utils";
 import Link from 'next/link';
 
@@ -34,14 +34,13 @@ interface InfluencerResultsTableProps {
   influencers: Influencer[];
   isLoading: boolean;
   error: string | null;
-  isLiveSearch: boolean;
 }
 
 const getProfileUrl = (connector: 'instagram' | 'youtube', username: string) => {
     return connector === 'instagram' ? `https://instagram.com/${username}` : `https://youtube.com/@${username}`;
 }
 
-export function InfluencerResultsTable({ influencers, isLoading, error, isLiveSearch }: InfluencerResultsTableProps) {
+export function InfluencerResultsTable({ influencers, isLoading, error }: InfluencerResultsTableProps) {
   const [sortConfig, setSortConfig] = useState<{ key: SortKey; direction: 'ascending' | 'descending' } | null>({ key: 'followers_count', direction: 'descending' });
 
   const sortedInfluencers = useMemo(() => {
@@ -179,13 +178,7 @@ export function InfluencerResultsTable({ influencers, isLoading, error, isLiveSe
     if (isLoading) return "Searching...";
     if (error) return "An error occurred.";
     if (influencers.length > 0) {
-      const resultText = isLiveSearch 
-        ? `${influencers.length} influencers found and saved.` 
-        : `Showing ${influencers.length} cached influencers.`;
-      const icon = isLiveSearch
-        ? <SearchCheck className="h-4 w-4 text-green-500" />
-        : <DatabaseZap className="h-4 w-4 text-blue-500" />;
-      return <div className="flex items-center gap-2">{icon} {resultText}</div>;
+      return `${influencers.length} influencers found from live search.`;
     }
     return 'Enter your criteria to find influencers.';
   }

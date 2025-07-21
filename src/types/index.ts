@@ -1,4 +1,6 @@
 
+import type { Timestamp } from "firebase/firestore";
+
 export interface Influencer {
   id: string;
   username: string;
@@ -12,7 +14,7 @@ export interface Influencer {
   location_city: string;
   profile_pic_url: string;
   category: string;
-  city_id?: number;
+  city_id?: string; // Changed to string for Firestore doc ID
 }
 
 export interface SearchParams {
@@ -43,8 +45,9 @@ export interface YlyticInfluencer {
 }
 
 export interface City {
-    id: number;
+    id: string; // Firestore document ID
     name: string;
+    createdAt: any; // Should be a Timestamp
 }
 
 export interface SignUpCredentials {

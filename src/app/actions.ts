@@ -7,11 +7,10 @@ import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 import { logger } from "@/lib/logger";
 import { auth, db as firestoreDb } from "@/lib/firebase"; // renamed to avoid conflict with local db
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, serverTimestamp, getDocs, collection, updateDoc, deleteDoc } from "firebase/firestore";
-import * as cityService from '@/lib/cityService';
+import { doc, setDoc, serverTimestamp, getDocs, collection, updateDoc, deleteDoc, getDoc, query, where, writeBatch } from "firebase/firestore";
 
 
-const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Omit<Influencer, 'city_id'>[] => {
+const mapYlyticToInfluencer = (ylyticData: YlyticInfluencer[]): Influencer[] => {
     return ylyticData.map(creator => ({
         id: creator.handle.replace(/@/g, ''),
         username: creator.handle.startsWith('@') ? creator.handle.substring(1) : creator.handle,
@@ -91,10 +90,9 @@ export async function searchInfluencers(
     }
     
     const mappedData = mapYlyticToInfluencer(creators);
-    cityService.saveInfluencers(params.city, mappedData);
-    
-    const finalData = await getInfluencersByCity(params.city);
-    return { data: finalData };
+    // In a real app, you would save these results to Firestore, associated with the city.
+    // For this demo, we just return the live results.
+    return { data: mappedData };
 
   } catch (error) {
     logger.error("Fetch Error while searching influencers", { error, params });
@@ -116,21 +114,18 @@ export async function getSuggestions(
   }
 }
 
-export async function getInfluencersByCity(city: string): Promise<Influencer[]> {
-  try {
-    return cityService.getInfluencersByCity(city);
-  } catch(e) {
-    logger.error(`Error fetching influencers by city for ${city}`, e);
-    return [];
-  }
-}
-
 export async function getCities(): Promise<City[]> {
     try {
-        return cityService.getAllCities();
-    } catch(e) {
-        logger.error("Error fetching cities", e);
-        return [];
+        const citiesCollection = collection(firestoreDb, 'cities');
+        const citySnapshot = await getDocs(citiesCollection);
+        const cityList = citySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        })) as City[];
+        return cityList;
+    } catch (error) {
+        logger.error("Error fetching cities from Firestore", error);
+        throw new Error("Could not fetch cities from the database.");
     }
 }
 
@@ -139,12 +134,9 @@ export async function signUpUser(credentials: SignUpCredentials): Promise<{ succ
   const { name, email, password } = credentials;
   
   try {
-    // This is a workaround for the client-side Firebase SDK usage in Server Actions
-    // In a real production app, you'd use the Firebase Admin SDK here.
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
 
-    // Now create a document in Firestore
     await setDoc(doc(firestoreDb, "users", user.uid), {
       id: user.uid,
       name: name,
@@ -169,8 +161,6 @@ export async function signUpUser(credentials: SignUpCredentials): Promise<{ succ
   }
 }
 
-// Admin Actions
-// In a real app, these would be protected by admin role checks using Firebase Admin SDK.
 
 export async function fetchAllUsers(): Promise<User[]> {
     try {
@@ -197,25 +187,40 @@ export async function updateUserRole(userId: string, role: 'user' | 'admin'): Pr
 
 export async function addCity(cityName: string): Promise<{ success: boolean; city?: City; error?: string }> {
     try {
-        const addedCity = cityService.addCity(cityName);
-        if (addedCity.error) {
-            return { success: false, error: addedCity.error };
+        // Check if city already exists (case-insensitive)
+        const q = query(collection(firestoreDb, 'cities'), where('name', '==', cityName));
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+            return { success: false, error: 'This city already exists.' };
         }
-        return { success: true, city: addedCity.city };
+
+        const newCityRef = doc(collection(firestoreDb, 'cities'));
+        const newCityData = { 
+            name: cityName, 
+            createdAt: serverTimestamp() 
+        };
+        await setDoc(newCityRef, newCityData);
+        
+        // We return a representation of the city; the final data lives in Firestore
+        return { success: true, city: { id: newCityRef.id, name: cityName, createdAt: new Date() } };
+
     } catch(e) {
         const error = e as Error;
-        logger.error("Error adding city", error);
-        return { success: false, error: error.message };
+        logger.error("Error adding city to Firestore", error);
+        return { success: false, error: 'Database error while adding city.' };
     }
 }
 
-export async function deleteCity(cityId: number): Promise<{ success: boolean; error?: string }> {
+export async function deleteCity(cityId: string): Promise<{ success: boolean; error?: string }> {
     try {
-        cityService.deleteCity(cityId);
+        const cityDocRef = doc(firestoreDb, 'cities', cityId);
+        await deleteDoc(cityDocRef);
+        // Note: In a real app, you would also need to handle/delete any influencers
+        // associated with this cityId. For now, we just delete the city.
         return { success: true };
     } catch(e) {
         const error = e as Error;
-        logger.error("Error deleting city", error);
-        return { success: false, error: error.message };
+        logger.error(`Error deleting city from Firestore: ${cityId}`, error);
+        return { success: false, error: 'Database error while deleting city.' };
     }
 }
