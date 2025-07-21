@@ -32,14 +32,9 @@ export default function ProtectedLayout({
   const { user, firebaseUser } = useAuth();
   const router = useRouter();
 
-  React.useEffect(() => {
-    if (!firebaseUser) {
-      router.push("/login");
-    }
-  }, [firebaseUser, router]);
 
   if (!firebaseUser || !user) {
-    // You can return a loading spinner here
+    // The AuthProvider and middleware handle the loading state and redirects
     return null;
   }
 
@@ -114,50 +109,53 @@ function Header() {
   const handleSignOut = async () => {
     try {
       await signOut();
-      router.push("/login");
     } catch (error) {
       console.error("Failed to sign out", error);
     }
   };
 
+  if (!user || !user.name || !user.email) {
+    return (
+        <header className="flex h-16 items-center justify-end px-4 sm:px-6 lg:px-8 bg-background border-b" />
+    )
+  }
+
   return (
     <header className="flex h-16 items-center justify-end px-4 sm:px-6 lg:px-8 bg-background border-b">
-        {user && user.name && user.email && (
-           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-auto justify-start gap-2 p-1">
-                    <Avatar className="h-8 w-8">
-                        <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png`} alt={user.name} />
-                        <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                     <div className="hidden sm:flex sm:flex-col sm:items-start">
-                        <span className="text-sm font-medium">{user.name}</span>
-                        <span className="text-xs text-muted-foreground">{user.email}</span>
-                    </div>
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.name}</p>
-                        <p className="text-xs leading-none text-muted-foreground">
-                            {user.email}
-                        </p>
-                    </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => router.push('/pricing')}>
-                    <UserIcon className="mr-2 h-4 w-4" />
-                    <span>Billing</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleSignOut}>
-                    <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
-                </DropdownMenuItem>
-            </DropdownMenuContent>
-        </DropdownMenu>
-        )}
+        <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-auto justify-start gap-2 p-1">
+                <Avatar className="h-8 w-8">
+                    <AvatarImage src={`https://avatar.vercel.sh/${user.email}.png`} alt={user.name} />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                    <div className="hidden sm:flex sm:flex-col sm:items-start">
+                    <span className="text-sm font-medium">{user.name}</span>
+                    <span className="text-xs text-muted-foreground">{user.email}</span>
+                </div>
+            </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">{user.name}</p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                        {user.email}
+                    </p>
+                </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push('/pricing')}>
+                <UserIcon className="mr-2 h-4 w-4" />
+                <span>Billing</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={handleSignOut}>
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+            </DropdownMenuItem>
+        </DropdownMenuContent>
+    </DropdownMenu>
     </header>
   );
 }

@@ -30,23 +30,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(true);
       if (fbUser) {
         setFirebaseUser(fbUser);
-        // After auth state changes, fetch user data from our own API
-        // This avoids direct client-to-firestore connection issues.
         try {
           const res = await fetch('/api/user');
           if (res.ok) {
             const userData = await res.json();
             setUser(userData);
           } else {
-            // This can happen if the session cookie is not set yet or is invalid.
-            // Sign out to clear state.
-            await firebaseSignOut(auth);
             setUser(null);
+            await firebaseSignOut(auth);
           }
         } catch (e) {
             console.error("Failed to fetch user data", e);
-            await firebaseSignOut(auth);
             setUser(null);
+            await firebaseSignOut(auth);
         }
       } else {
         setFirebaseUser(null);
@@ -89,20 +85,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };
 
-  // While the initial user state is loading, show a spinner.
   if (isLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
             <Loader2 className="h-8 w-8 animate-spin" />
         </div>
     )
-  }
-
-  // Once loading is complete, handle redirects
-  const isProtectedRoute = pathname.startsWith('/influencer-finder') || pathname.startsWith('/dashboard');
-  if (!isLoading && !user && isProtectedRoute) {
-    router.push('/login');
-    return null; // or a loading spinner
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
