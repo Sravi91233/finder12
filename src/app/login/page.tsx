@@ -49,7 +49,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await signIn(values.email, values.password);
-      router.push('/influencer-finder');
+      router.push('/influencer-finder'); // Redirect after AuthProvider updates state
     } catch (err: any) {
       let errorMessage = "An unexpected error occurred. Please try again.";
       // Firebase auth errors have a 'code' property
@@ -69,7 +69,8 @@ export default function LoginPage() {
         }
       }
       setError(errorMessage);
-      setIsLoading(false);
+    } finally {
+        setIsLoading(false);
     }
   };
 

@@ -2,17 +2,19 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword } from 'firebase/auth';
+import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signOut: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +23,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const router = useRouter();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
@@ -37,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } else {
           // This case might happen if user exists in Auth but not Firestore
           setUser(null); 
+          // If the user doc doesn't exist, something is wrong, sign them out.
+          await firebaseSignOut(auth);
         }
       } else {
         setUser(null);
@@ -52,7 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // onAuthStateChanged will handle the rest
   };
 
-  const value = { firebaseUser, user, isLoading, signIn };
+  const signOut = async () => {
+    await firebaseSignOut(auth);
+    // onAuthStateChanged will set user to null
+  };
+
+  const value = { firebaseUser, user, isLoading, signIn, signOut };
 
   if (isLoading) {
     return (
