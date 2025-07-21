@@ -1,7 +1,7 @@
 
 "use client";
 
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
@@ -19,26 +19,20 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Function to fetch the session cookie
 async function fetchSessionCookie(user: FirebaseUser) {
-    const idToken = await user.getIdToken();
-    try {
-        const response = await fetch('/api/auth/session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ idToken }),
-        });
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("Session cookie creation failed:", errorData);
-            throw new Error('Failed to set session cookie');
-        }
-    } catch (error) {
-        console.error('Session cookie error:', error);
+    const idToken = await user.getIdToken(true); // Force refresh
+    const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idToken }),
+    });
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error("Session cookie creation failed:", errorData);
+        throw new Error('Failed to set session cookie');
     }
 }
 
-// Function to clear the session cookie
 async function clearSessionCookie() {
     try {
         await fetch('/api/auth/session', { method: 'DELETE' });
@@ -66,23 +60,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = userDoc.data() as User;
           setUser(userData);
           await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
-          await fetchSessionCookie(fbUser);
-          
-          // Redirect after successful login, if not already on a protected page
-          if (pathname === '/login' || pathname === '/signup') {
-              router.push('/influencer-finder');
-          }
         } else {
-          // If user exists in Firebase Auth but not in Firestore, sign them out.
           setUser(null); 
           await firebaseSignOut(auth);
         }
       } else {
         setFirebaseUser(null);
         setUser(null);
-        await clearSessionCookie(); // Clear session cookie on logout
-
-        // If logged out, redirect to login page if they are on a protected route
+        // Redirect to login if user logs out while on a protected route
         const protectedRoutes = ['/influencer-finder', '/dashboard'];
         const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
         if (isProtectedRoute) {
@@ -95,15 +80,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => unsubscribe();
   }, [pathname, router]);
 
-  const signIn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password);
-    // The onAuthStateChanged listener will handle the redirect.
-  };
+  const signIn = useCallback(async (email: string, password: string) => {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    await fetchSessionCookie(userCredential.user);
+  }, []);
 
-  const signOut = async () => {
+  const signOut = useCallback(async () => {
     await firebaseSignOut(auth);
-    // The onAuthStateChanged listener will handle clearing state and redirecting.
-  };
+    await clearSessionCookie();
+    // The onAuthStateChanged listener will handle redirecting to /login
+  }, []);
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };
 

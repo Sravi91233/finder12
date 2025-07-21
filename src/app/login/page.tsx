@@ -34,6 +34,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signIn } = useAuth();
+  const router = useRouter();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -48,7 +49,7 @@ export default function LoginPage() {
     setError(null);
     try {
       await signIn(values.email, values.password);
-      // The redirect will now be handled by the AuthProvider's useEffect
+      router.push('/influencer-finder');
     } catch (err: any) {
       let errorMessage = "An unexpected error occurred. Please try again.";
       // Firebase auth errors have a 'code' property
