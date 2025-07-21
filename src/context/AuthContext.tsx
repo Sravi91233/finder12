@@ -27,9 +27,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logger.debug("AUTH CONTEXT: onAuthStateChanged triggered.", { hasUser: !!fbUser });
         setFirebaseUser(fbUser);
         if (fbUser) {
-            // User is signed in according to Firebase client SDK.
-            // Let's verify the session with our backend and get the full user profile.
-            // This ensures client and server state are in sync.
             try {
                 const response = await fetch('/api/auth/session');
                 if (response.ok) {
@@ -37,17 +34,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                     logger.debug("AUTH CONTEXT: Session verified on load, user set.", { email: userData.email });
                     setUser(userData);
                 } else {
-                    // Session is invalid or expired on the server.
                     logger.warn("AUTH CONTEXT: onAuthStateChanged user exists, but server session is invalid. Signing out.");
                     setUser(null);
-                    await firebaseSignOut(auth); // Clean up client state
+                    await firebaseSignOut(auth); 
                 }
             } catch (error) {
                 logger.error("AUTH CONTEXT: Error verifying session on load.", error);
                 setUser(null);
             }
         } else {
-            // User is signed out.
             setUser(null);
         }
         setIsLoading(false);
@@ -76,22 +71,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userData: User = await response.json();
     logger.debug("AUTH CONTEXT: Session created successfully. User data received:", userData);
     setUser(userData);
+    setIsLoading(false); // Explicitly set loading to false after sign-in
     return userData;
   }, []);
 
   const signOut = useCallback(async () => {
     logger.debug("AUTH CONTEXT: Signing out...");
     try {
-        // 1. Tell the server to delete the session cookie
         await fetch('/api/auth/session', { method: 'DELETE' });
-        // 2. Sign out from Firebase on the client
         await firebaseSignOut(auth);
     } catch (error) {
         logger.error('AUTH CONTEXT: Failed to sign out:', error);
     } finally {
-      // 3. Clear local state
       setUser(null);
       setFirebaseUser(null);
+      setIsLoading(false);
       logger.debug("AUTH CONTEXT: Client user state cleared.");
     }
   }, []);
