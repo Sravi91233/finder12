@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -28,9 +28,10 @@ import {
 } from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
 import { Card, CardContent } from "@/components/ui/card";
+import { Combobox } from "@/components/ui/combobox";
 import { Sparkles, Search, Loader2 } from "lucide-react";
 import { Badge } from "./ui/badge";
-import type { SearchParams } from "@/types";
+import type { SearchParams, City } from "@/types";
 import type { SuggestSearchTermsOutput } from "@/ai/flows/suggest-search-terms";
 
 const formSchema = z.object({
@@ -49,11 +50,13 @@ type FormValues = z.infer<typeof formSchema>;
 const categories = ["Fashion", "Beauty", "Gaming", "Tech", "Food", "Travel", "Fitness", "Lifestyle", "Books & Writing", "Health & Fitness", "Family & Relationships", "Art & Design"];
 
 interface InfluencerSearchFormProps {
-  onSearch: (params: SearchParams) => void;
+  onLiveSearch: (params: SearchParams) => void;
+  onCityChange: (city: string) => void;
   isLoading: boolean;
+  cities: City[];
 }
 
-export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFormProps) {
+export function InfluencerSearchForm({ onLiveSearch, onCityChange, isLoading, cities }: InfluencerSearchFormProps) {
   const [suggestions, setSuggestions] = useState<SuggestSearchTermsOutput | null>(null);
   const [isSuggesting, setIsSuggesting] = useState(false);
 
@@ -71,6 +74,14 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
     },
   });
 
+  const selectedCity = form.watch('city');
+
+  useEffect(() => {
+    if (selectedCity) {
+      onCityChange(selectedCity);
+    }
+  }, [selectedCity, onCityChange]);
+
   const onSubmit = (values: FormValues) => {
     const searchParams: SearchParams = {
       ...values,
@@ -82,7 +93,7 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
       posts_min: values.posts[0],
       posts_max: values.posts[1],
     };
-    onSearch(searchParams);
+    onLiveSearch(searchParams);
   };
 
   const handleGetSuggestions = async () => {
@@ -104,6 +115,8 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
     setSuggestions(null);
   }
 
+  const cityOptions = cities.map(c => ({ value: c.name, label: c.name }));
+
   return (
     <Card>
       <CardContent className="p-4">
@@ -114,13 +127,24 @@ export function InfluencerSearchForm({ onSearch, isLoading }: InfluencerSearchFo
                 <FormItem><FormLabel>Country</FormLabel><FormControl><Input placeholder="e.g. USA" {...field} /></FormControl></FormItem>
             )}/>
 
-            <FormField control={form.control} name="city" render={({ field }) => (
-                <FormItem>
+            <FormField
+              control={form.control}
+              name="city"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
                   <FormLabel>City (Required)</FormLabel>
-                  <FormControl><Input placeholder="e.g. New York" {...field} /></FormControl>
+                   <Combobox
+                      options={cityOptions}
+                      value={field.value}
+                      onChange={field.onChange}
+                      placeholder="Select or type a city..."
+                      searchPlaceholder="Search for a city..."
+                      noResultsText="No cities found."
+                    />
                   <FormMessage />
                 </FormItem>
-            )}/>
+              )}
+            />
 
             <div className="relative">
               <FormField
