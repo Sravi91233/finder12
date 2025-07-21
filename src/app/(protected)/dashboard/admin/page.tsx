@@ -56,7 +56,9 @@ export default function AdminDashboardPage() {
 
 
     useEffect(() => {
-        refreshData();
+        if (user?.role === 'admin') {
+            refreshData();
+        }
     }, [user]);
 
 
@@ -95,7 +97,7 @@ export default function AdminDashboardPage() {
 
     if (user?.role !== 'admin') {
         return (
-            <div className="text-center">
+            <div className="text-center p-8">
                 <h1 className="text-2xl font-bold">Access Denied</h1>
                 <p className="text-muted-foreground">You do not have permission to view this page.</p>
             </div>

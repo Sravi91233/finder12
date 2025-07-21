@@ -105,9 +105,12 @@ export function addCity(cityName: string): { city?: City; error?: string } {
 
 export function deleteCity(cityId: number): void {
     try {
-        // In a real app, you might want to handle what happens to influencers in this city.
-        // For now, we'll just delete the city.
-        db.prepare('DELETE FROM cities WHERE id = ?').run(cityId);
+        db.transaction(() => {
+            // First, delete influencers associated with the city to maintain foreign key integrity
+            db.prepare('DELETE FROM creators WHERE city_id = ?').run(cityId);
+            // Then, delete the city itself
+            db.prepare('DELETE FROM cities WHERE id = ?').run(cityId);
+        })();
     } catch(e) {
         logger.error(`Failed to delete city with id: ${cityId}`, e);
         throw new Error('Database error while deleting city.');
