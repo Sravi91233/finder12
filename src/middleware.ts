@@ -1,16 +1,18 @@
 
 import {NextRequest, NextResponse} from 'next/server';
 import { logger } from '@/lib/logger';
+import { cookies } from 'next/headers';
 
 const protectedRoutes = ['/influencer-finder', '/dashboard'];
 const authRoutes = ['/login', '/signup'];
 
-export default async function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
   const isProtectedRoute = protectedRoutes.some(route => path.startsWith(route));
   const isAuthRoute = authRoutes.includes(path);
   
-  const sessionCookie = req.cookies.get('session');
+  const cookieStore = cookies();
+  const sessionCookie = cookieStore.get('session');
   logger.debug(`MIDDLEWARE: Path: ${path}, Has Session: ${!!sessionCookie?.value}`);
   
   // If trying to access a protected route without a session, redirect to login
