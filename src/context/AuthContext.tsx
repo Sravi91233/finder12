@@ -3,7 +3,8 @@
 
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { onAuthStateChanged, User as FirebaseUser, signInWithEmailAndPassword, signOut as firebaseSignOut } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from "firebase/firestore";
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -22,27 +23,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
-  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
       setIsLoading(true);
       if (fbUser) {
         setFirebaseUser(fbUser);
-        try {
-          const res = await fetch('/api/user');
-          if (res.ok) {
-            const userData = await res.json();
-            setUser(userData);
-          } else {
-            // This can happen if the cookie isn't set yet or is invalid.
-            // The sign-in flow will handle fetching the user.
-            setUser(null);
-          }
-        } catch (e) {
-            console.error("Failed to fetch user data on load", e);
-            setUser(null);
+        const userDocRef = doc(db, "users", fbUser.uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          setUser(userDoc.data() as User);
+        } else {
+          // This could happen if a user is created in auth but not in firestore
+          setUser(null);
         }
       } else {
         setFirebaseUser(null);
@@ -59,7 +52,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const idToken = await userCredential.user.getIdToken(true);
     
-    // Create the server-side session
+    // Create the server-side session and get user data back
     const response = await fetch('/api/auth/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -68,25 +61,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!response.ok) {
         const errorData = await response.json();
-        console.error("Session cookie creation failed:", errorData);
-        throw new Error(errorData.error || 'Failed to set session cookie');
+        console.error("Session creation/user fetch failed:", errorData);
+        throw new Error(errorData.error || 'Failed to sign in');
     }
 
-    // Now that the session is created, fetch user data to update context
-    try {
-        const res = await fetch('/api/user');
-        if (res.ok) {
-            const userData = await res.json();
-            setUser(userData);
-        } else {
-            throw new Error('Could not fetch user data after sign in');
-        }
-    } catch (e) {
-        console.error("Failed to fetch user data after sign in", e);
-        // Sign out to clean up state if user data fetch fails
-        await firebaseSignOut(auth);
-        throw e;
-    }
+    const userData = await response.json();
+    setUser(userData);
 
   }, []);
 

@@ -1,10 +1,11 @@
 
 import {NextRequest, NextResponse} from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
+import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 import { logger } from '@/lib/logger';
+import type { User } from '@/types';
 
-// This endpoint creates a session cookie when a user logs in.
+// This endpoint creates a session cookie and returns user data.
 export async function POST(request: NextRequest) {
   const {idToken} = await request.json();
 
@@ -16,7 +17,19 @@ export async function POST(request: NextRequest) {
       expiresIn,
     });
     
-    const response = NextResponse.json({status: 'success'});
+    // After creating the cookie, decode it to get the UID
+    const decodedToken = await adminAuth.verifySessionCookie(sessionCookie);
+    const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
+
+    if (!userDoc.exists) {
+        logger.error('User document not found for authenticated user.', { uid: decodedToken.uid });
+        return NextResponse.json({ error: 'User not found in database' }, { status: 404 });
+    }
+    
+    const user = userDoc.data() as User;
+
+    const response = NextResponse.json(user);
+
     response.cookies.set('session', sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
@@ -30,7 +43,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     logger.error('Session cookie creation error:', { message: error.message, code: error.code });
     return NextResponse.json(
-      { status: 'error', message: 'Failed to create session cookie.', error: error.message }, 
+      { status: 'error', message: 'Failed to create session.', error: error.message }, 
       { status: 500 }
     );
   }
