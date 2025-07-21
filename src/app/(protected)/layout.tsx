@@ -122,7 +122,7 @@ function Header() {
 
   return (
     <header className="flex h-16 items-center justify-end px-4 sm:px-6 lg:px-8 bg-background border-b">
-        {user && (
+        {user && user.name && user.email && (
            <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-auto justify-start gap-2 p-1">
