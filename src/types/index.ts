@@ -14,7 +14,6 @@ export interface Influencer {
   location_city: string;
   profile_pic_url: string;
   category: string;
-  city_id?: string; // Changed to string for Firestore doc ID
 }
 
 export interface SearchParams {
@@ -47,7 +46,7 @@ export interface YlyticInfluencer {
 export interface City {
     id: string; // Firestore document ID
     name: string;
-    createdAt: any; // Should be a Timestamp
+    createdAt: any; // Should be a Timestamp from Firestore
 }
 
 export interface SignUpCredentials {

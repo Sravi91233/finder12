@@ -7,7 +7,7 @@ import { doc, getDoc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import type { User } from '@/types';
 import { Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 interface AuthContextType {
   user: User | null;
@@ -24,42 +24,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
-      setFirebaseUser(fbUser);
+      setIsLoading(true);
       if (fbUser) {
-        // Fetch user profile from Firestore
+        setFirebaseUser(fbUser);
         const userDocRef = doc(db, 'users', fbUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
           const userData = userDoc.data() as User;
           setUser(userData);
-          // Update last login timestamp
           await setDoc(userDocRef, { lastLogin: serverTimestamp() }, { merge: true });
         } else {
-          // This case might happen if user exists in Auth but not Firestore
           setUser(null); 
-          // If the user doc doesn't exist, something is wrong, sign them out.
           await firebaseSignOut(auth);
         }
       } else {
+        setFirebaseUser(null);
         setUser(null);
+        // If user is not authenticated and is trying to access a protected route, redirect to login
+        if (!['/login', '/signup', '/', '/pricing'].includes(pathname)) {
+            router.push('/login');
+        }
       }
       setIsLoading(false);
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [pathname, router]);
 
   const signIn = async (email: string, password: string) => {
     await signInWithEmailAndPassword(auth, email, password);
-    // onAuthStateChanged will handle the rest
   };
 
   const signOut = async () => {
     await firebaseSignOut(auth);
-    // onAuthStateChanged will set user to null
   };
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };

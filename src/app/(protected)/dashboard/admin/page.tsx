@@ -42,7 +42,6 @@ export default function AdminDashboardPage() {
                 getCities()
             ]);
             setUsers(userList);
-            // Sort cities by name alphabetically
             const sortedCities = cityList.sort((a, b) => a.name.localeCompare(b.name));
             setCities(sortedCities);
         } catch (error) {
@@ -68,7 +67,6 @@ export default function AdminDashboardPage() {
         if (!newCity.trim()) return;
         const result = await addCityAction(newCity);
         if (result.success && result.city) {
-          // Re-fetch and sort cities to ensure list is up to date
           await refreshData();
           setNewCity('');
           toast({ title: "City Added", description: `${newCity} has been added.` });
@@ -141,7 +139,7 @@ export default function AdminDashboardPage() {
                                          <Select 
                                             value={u.role} 
                                             onValueChange={(value: 'user' | 'admin') => handleRoleChange(u.id, value)}
-                                            disabled={u.id === user.id} // Admin cannot change their own role
+                                            disabled={u.id === user.id}
                                         >
                                             <SelectTrigger className="w-[120px]">
                                                 <SelectValue placeholder="Select role" />

@@ -52,7 +52,7 @@ export async function searchInfluencers(
 
   if (params.followers_min !== undefined) queryParams.append("followers_minimum", params.followers_min.toString());
   if (params.followers_max !== undefined && params.followers_max < 10000000) queryParams.append("followers_maximum", params.followers_max.toString());
-  if (params.engagement_rate_min !== undefined) queryP_append("engagement_rate_minimum", params.engagement_rate_min.toString());
+  if (params.engagement_rate_min !== undefined) queryParams.append("engagement_rate_minimum", params.engagement_rate_min.toString());
   if (params.engagement_rate_max !== undefined && params.engagement_rate_max < 100) queryParams.append("engagement_rate_maximum", params.engagement_rate_max.toString());
   if (params.posts_min !== undefined) queryParams.append("posts_minimum", params.posts_min.toString());
   if (params.posts_max !== undefined && params.posts_max < 5000) queryParams.append("posts_maximum", params.posts_max.toString());
@@ -90,8 +90,6 @@ export async function searchInfluencers(
     }
     
     const mappedData = mapYlyticToInfluencer(creators);
-    // In a real app, you would save these results to Firestore, associated with the city.
-    // For this demo, we just return the live results.
     return { data: mappedData };
 
   } catch (error) {
@@ -187,27 +185,31 @@ export async function updateUserRole(userId: string, role: 'user' | 'admin'): Pr
 
 export async function addCity(cityName: string): Promise<{ success: boolean; city?: City; error?: string }> {
     try {
-        // Check if city already exists (case-insensitive)
-        const q = query(collection(firestoreDb, 'cities'), where('name', '==', cityName));
+        const citiesRef = collection(firestoreDb, 'cities');
+        const q = query(citiesRef, where('name', '==', cityName));
         const querySnapshot = await getDocs(q);
+
         if (!querySnapshot.empty) {
             return { success: false, error: 'This city already exists.' };
         }
 
         const newCityRef = doc(collection(firestoreDb, 'cities'));
         const newCityData = { 
+            id: newCityRef.id,
             name: cityName, 
             createdAt: serverTimestamp() 
         };
         await setDoc(newCityRef, newCityData);
         
-        // We return a representation of the city; the final data lives in Firestore
-        return { success: true, city: { id: newCityRef.id, name: cityName, createdAt: new Date() } };
+        return { success: true, city: { ...newCityData, createdAt: new Date() } };
 
-    } catch(e) {
-        const error = e as Error;
-        logger.error("Error adding city to Firestore", error);
-        return { success: false, error: 'Database error while adding city.' };
+    } catch(e: any) {
+        logger.error("Error adding city to Firestore", { code: e.code, name: e.name });
+        let errorMessage = 'Database error while adding city.';
+        if (e.code === 'permission-denied') {
+            errorMessage = 'Permission denied. You must be an administrator to add a city.';
+        }
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -215,12 +217,13 @@ export async function deleteCity(cityId: string): Promise<{ success: boolean; er
     try {
         const cityDocRef = doc(firestoreDb, 'cities', cityId);
         await deleteDoc(cityDocRef);
-        // Note: In a real app, you would also need to handle/delete any influencers
-        // associated with this cityId. For now, we just delete the city.
         return { success: true };
-    } catch(e) {
-        const error = e as Error;
-        logger.error(`Error deleting city from Firestore: ${cityId}`, error);
-        return { success: false, error: 'Database error while deleting city.' };
+    } catch(e: any) {
+        logger.error(`Error deleting city ${cityId}`, { code: e.code, name: e.name });
+        let errorMessage = 'Database error while deleting city.';
+         if (e.code === 'permission-denied') {
+            errorMessage = 'Permission denied. You must be an administrator to delete a city.';
+        }
+        return { success: false, error: errorMessage };
     }
 }
