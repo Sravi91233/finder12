@@ -25,15 +25,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (fbUser) => {
         setIsLoading(true);
-        setFirebaseUser(fbUser);
-        // We will rely on the session cookie and middleware to handle auth state.
-        // For the client, we just need to know if a Firebase user exists.
-        // The actual user profile will be fetched on pages/server actions as needed.
+        if (fbUser) {
+            setFirebaseUser(fbUser);
+            // The user profile will be loaded via a separate mechanism
+            // or will be populated by the signIn function.
+            // For now, we just acknowledge the firebase user exists.
+        } else {
+            setFirebaseUser(null);
+            setUser(null);
+        }
         setIsLoading(false);
     });
     return () => unsubscribe();
   }, []);
-
 
   const signIn = useCallback(async (email: string, password: string): Promise<User | null> => {
     console.log("AUTH CONTEXT: Attempting to sign in with email and password...");
@@ -66,20 +70,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
         console.error('AUTH CONTEXT: Failed to sign out:', error);
     } finally {
-      console.log("AUTH CONTEXT: Redirecting to /login after sign out.");
-      window.location.href = '/login';
+      setUser(null);
+      console.log("AUTH CONTEXT: Client user state cleared.");
     }
   }, []);
 
   const value = { firebaseUser, user, isLoading, signIn, signOut };
-
-  if (isLoading) {
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin" />
-        </div>
-    )
-  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

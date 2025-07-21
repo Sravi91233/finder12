@@ -23,22 +23,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ProtectedRoutes from "./ProtectedRoutes";
 
 export default function ProtectedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { user, firebaseUser } = useAuth();
-  const router = useRouter();
+  const { user } = useAuth();
 
+  return (
+    <ProtectedRoutes>
+      <div className="flex min-h-screen">
+        {user && <Sidebar userRole={user.role} />}
+        <div className="flex flex-1 flex-col">
+          <Header />
+          <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/40">
+            {children}
+          </main>
+        </div>
+      </div>
+    </ProtectedRoutes>
+  );
+}
 
-  if (!firebaseUser || !user) {
-    // The AuthProvider and middleware handle the loading state and redirects
-    return null;
-  }
-
-  const navItems = [
+const navItems = [
     {
       href: "/influencer-finder",
       label: "Influencer Finder",
@@ -59,20 +68,8 @@ export default function ProtectedLayout({
     },
   ];
 
-  return (
-    <div className="flex min-h-screen">
-      <Sidebar navItems={navItems} userRole={user.role} />
-      <div className="flex flex-1 flex-col">
-        <Header />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/40">
-          {children}
-        </main>
-      </div>
-    </div>
-  );
-}
 
-function Sidebar({ navItems, userRole }: { navItems: any[]; userRole: string }) {
+function Sidebar({ userRole }: { userRole: string }) {
   const pathname = usePathname();
 
   return (
@@ -109,6 +106,7 @@ function Header() {
   const handleSignOut = async () => {
     try {
       await signOut();
+      router.push('/login');
     } catch (error) {
       console.error("Failed to sign out", error);
     }

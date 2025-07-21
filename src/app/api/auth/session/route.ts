@@ -3,7 +3,6 @@ import {NextRequest, NextResponse} from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { logger } from '@/lib/logger';
 import type { User } from '@/types';
-import { cookies } from 'next/headers';
 
 // This endpoint creates a session cookie and returns user data.
 export async function POST(request: NextRequest) {
@@ -40,7 +39,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set('session', sessionCookie, {
       maxAge: expiresIn,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: true, // Use secure cookies as the environment is HTTPS
       path: '/',
       sameSite: 'lax',
     });
@@ -65,7 +64,7 @@ export async function DELETE() {
   response.cookies.set('session', '', {
     maxAge: 0,
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
+    secure: true,
     path: '/',
     sameSite: 'lax',
   });
