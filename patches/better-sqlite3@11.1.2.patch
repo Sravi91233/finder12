@@ -1,0 +1,10 @@
+diff --git a/node_modules/better-sqlite3/build/cjs/package.json b/node_modules/better-sqlite3/build/cjs/package.json
+index 54e99ca..e7865c3 100644
+--- a/node_modules/better-sqlite3/build/cjs/package.json
++++ b/node_modules/better-sqlite3/build/cjs/package.json
+@@ -1,3 +1,4 @@
+ {
+-  "type": "commonjs"
++  "type": "commonjs",
++  "main": "./better-sqlite3.js"
+ }

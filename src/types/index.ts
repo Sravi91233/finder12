@@ -1,3 +1,4 @@
+
 export interface Influencer {
   id: string;
   username: string;
@@ -38,4 +39,15 @@ export interface YlyticInfluencer {
     handle: string;
     handle_link: string;
     posts: number;
+}
+
+export interface City {
+    id: number;
+    name: string;
+}
+
+export interface SignUpCredentials {
+    name: string;
+    email: string;
+    password: string;
 }
