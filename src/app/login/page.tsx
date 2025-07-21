@@ -21,7 +21,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
 
 const loginSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -34,7 +33,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signIn } = useAuth();
-  const router = useRouter();
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -47,15 +45,21 @@ export default function LoginPage() {
   const onSubmit = async (values: LoginFormValues) => {
     setIsLoading(true);
     setError(null);
+    console.log("LOGIN PAGE: Submitting form...");
     try {
+      console.log("LOGIN PAGE: Calling signIn from AuthContext...");
       const user = await signIn(values.email, values.password);
+      console.log("LOGIN PAGE: signIn call successful. User data received:", user);
+
       if (user) {
+        console.log("LOGIN PAGE: User exists. Redirecting with full page refresh to /influencer-finder...");
         // Use a full page refresh to ensure the session cookie is set before navigating.
         // This is the most reliable way to avoid race conditions.
         window.location.href = '/influencer-finder';
       } else {
-        // This case might happen if signIn returns null/undefined for some reason
-        setError('Login was not successful. Please try again.');
+        const loginError = 'Login was not successful. Please try again.';
+        console.error("LOGIN PAGE: " + loginError);
+        setError(loginError);
         setIsLoading(false);
       }
     } catch (err: any) {
@@ -79,8 +83,9 @@ export default function LoginPage() {
         // Handle custom errors from our API
         errorMessage = err.message;
       }
+      console.error("LOGIN PAGE: Error during login process:", errorMessage, err);
       setError(errorMessage);
-       setIsLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -104,6 +109,7 @@ export default function LoginPage() {
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
                   <AlertTitle>Login Failed</AlertTitle>
+
                   <AlertDescription>{error}</AlertDescription>
                 </Alert>
               )}
